@@ -143,8 +143,12 @@ while (ob_get_level()) {
     ob_end_clean();
 }
 
+// Build Content-Disposition with both ASCII fallback and RFC 5987 UTF-8 name
+$asciiName  = preg_replace('/[^\x20-\x7E]/', '_', $fileName); // fallback for old browsers
+$encodedName = rawurlencode($fileName);
+
 header('Content-Type: ' . $mimeType);
-header('Content-Disposition: attachment; filename="' . rawurlencode($fileName) . '"');
+header('Content-Disposition: attachment; filename="' . addslashes($asciiName) . '"; filename*=UTF-8\'\'' . $encodedName);
 header('Content-Length: ' . $fileSize);
 header('Cache-Control: no-cache, no-store, must-revalidate');
 header('Pragma: no-cache');
