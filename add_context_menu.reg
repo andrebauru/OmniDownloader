@@ -1,0 +1,16 @@
+Windows Registry Editor Version 5.00
+
+; Adiciona uma opcao no menu de contexto para arquivos .mp3
+; para abrir a URL original do video no navegador.
+
+[HKEY_CLASSES_ROOT\SystemFileAssociations\.mp3\shell\OpenYouTubeURL]
+@="Abrir URL do Vídeo no Navegador"
+; O icone e opcional, mas ajuda a identificar a acao.
+; Este e um icone de 'globo' generico.
+"Icon"="imageres.dll,100"
+
+[HKEY_CLASSES_ROOT\SystemFileAssociations\.mp3\shell\OpenYouTubeURL\command]
+; Este comando executa o script Python em modo 'windowed' (sem console)
+; passando o caminho do arquivo MP3 clicado ("%1") como argumento.
+; Certifique-se de que pyw.exe esta no seu PATH.
+@="pyw.exe \"D:\\Programacao\\Downloader\\open_url_from_mp3.py\" \" %1\""

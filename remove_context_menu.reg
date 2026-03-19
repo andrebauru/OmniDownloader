@@ -1,0 +1,6 @@
+Windows Registry Editor Version 5.00
+
+; Remove a opcao do menu de contexto para arquivos .mp3
+; que abre a URL original do video no navegador.
+
+[-HKEY_CLASSES_ROOT\SystemFileAssociations\.mp3\shell\OpenYouTubeURL]
