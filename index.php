@@ -1,13 +1,128 @@
 <?php
-// Generate a one-time token used to detect when the download has started (via cookie)
 $downloadToken = bin2hex(random_bytes(16));
+
+// Detect protocol and host for canonical/OG URLs
+$protocol  = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+$host      = $_SERVER['HTTP_HOST'] ?? 'omnidownloader.andretsc.dev';
+$siteUrl   = $protocol . '://' . $host;
+$canonical = $siteUrl . '/';
+$ogImage   = $siteUrl . '/assets/img/og-image.png';
 ?><!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" prefix="og: https://ogp.me/ns#">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="OmniDownloader — Baixe vídeos e músicas do YouTube, TikTok, Instagram e mais de 1000 plataformas.">
-    <title>OmniDownloader — Baixe Vídeos e Músicas</title>
+
+    <!-- ===== Primary SEO ===== -->
+    <title>OmniDownloader — Baixar Vídeos e Músicas do YouTube, TikTok e Instagram</title>
+    <meta name="description"
+          content="Baixe vídeos em MP4 e músicas em MP3 do YouTube, TikTok, Instagram, Twitter, Facebook e mais de 1000 plataformas. Grátis, rápido e sem precisar instalar nada.">
+    <meta name="keywords"
+          content="baixar vídeo youtube, baixar mp3 youtube, download youtube, baixar tiktok, baixar instagram, youtube downloader, conversor youtube mp3, baixar música grátis, download vídeo online, yt-dlp online">
+    <meta name="author"      content="Andre Silva">
+    <meta name="robots"      content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+    <meta name="theme-color" content="#0D47A1">
+    <link rel="canonical"    href="<?= htmlspecialchars($canonical, ENT_QUOTES, 'UTF-8') ?>">
+
+    <!-- ===== Open Graph (Facebook, WhatsApp, LinkedIn) ===== -->
+    <meta property="og:type"        content="website">
+    <meta property="og:url"         content="<?= htmlspecialchars($canonical, ENT_QUOTES, 'UTF-8') ?>">
+    <meta property="og:title"       content="OmniDownloader — Baixar Vídeos e Músicas Online">
+    <meta property="og:description" content="Baixe vídeos em MP4 e músicas em MP3 do YouTube, TikTok, Instagram e mais de 1000 sites. Grátis, sem cadastro, funciona no celular.">
+    <meta property="og:image"       content="<?= htmlspecialchars($ogImage, ENT_QUOTES, 'UTF-8') ?>">
+    <meta property="og:image:width"  content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt"    content="OmniDownloader — Baixador de vídeos e músicas online">
+    <meta property="og:locale"       content="pt_BR">
+    <meta property="og:site_name"    content="OmniDownloader">
+
+    <!-- ===== Twitter Card ===== -->
+    <meta name="twitter:card"        content="summary_large_image">
+    <meta name="twitter:title"       content="OmniDownloader — Baixar Vídeos e Músicas Online">
+    <meta name="twitter:description" content="Baixe vídeos em MP4 e músicas em MP3 do YouTube, TikTok, Instagram e mais de 1000 sites. Grátis e sem cadastro.">
+    <meta name="twitter:image"       content="<?= htmlspecialchars($ogImage, ENT_QUOTES, 'UTF-8') ?>">
+    <meta name="twitter:creator"     content="@andretsc">
+
+    <!-- ===== Structured Data: WebApplication ===== -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "OmniDownloader",
+        "url": "<?= $siteUrl ?>",
+        "description": "Baixe vídeos em MP4 e músicas em MP3 do YouTube, TikTok, Instagram, Twitter, Facebook e mais de 1000 plataformas. Grátis, rápido e sem precisar instalar nada.",
+        "applicationCategory": "MultimediaApplication",
+        "operatingSystem": "All",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "BRL"
+        },
+        "featureList": [
+            "Download de vídeos do YouTube em MP4",
+            "Download de músicas do YouTube em MP3",
+            "Download de vídeos do TikTok",
+            "Download de vídeos do Instagram",
+            "Suporte a mais de 1000 plataformas",
+            "Sem necessidade de cadastro",
+            "Interface responsiva para celular"
+        ],
+        "author": {
+            "@type": "Person",
+            "name": "Andre Silva",
+            "url": "https://andretsc.dev"
+        }
+    }
+    </script>
+
+    <!-- ===== Structured Data: FAQPage ===== -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": "Como baixar vídeos do YouTube?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Cole o link do vídeo do YouTube no campo de busca, selecione o formato MP4, clique em 'Baixar Agora' e escolha onde salvar o arquivo."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Como converter YouTube para MP3?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Cole o link do YouTube, selecione o formato 'Áudio MP3 · 192 kbps', clique em 'Baixar Agora' e o arquivo MP3 será salvo automaticamente."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Quais plataformas são suportadas?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "O OmniDownloader suporta YouTube, TikTok, Instagram, Twitter/X, Facebook, Twitch, SoundCloud e mais de 1000 plataformas via yt-dlp."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "O download é gratuito?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Sim, o OmniDownloader é totalmente gratuito e não exige cadastro ou instalação de programas."
+                }
+            }
+        ]
+    }
+    </script>
+
+    <!-- ===== Performance ===== -->
+    <link rel="preconnect" href="https://i.ytimg.com">
+    <link rel="dns-prefetch" href="https://i.ytimg.com">
+    <link rel="preload" href="assets/css/style.css" as="style">
+    <link rel="preload" href="assets/js/app.js"     as="script">
+
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
@@ -181,13 +296,47 @@ $downloadToken = bin2hex(random_bytes(16));
                     </div>
                 </div>
 
+                <!-- ======= FAQ (SEO rich snippet) ======= -->
+                <section class="faq" aria-label="Perguntas frequentes">
+                    <h2 class="faq-title">Perguntas Frequentes</h2>
+
+                    <details class="faq-item">
+                        <summary class="faq-question">Como baixar vídeos do YouTube?</summary>
+                        <p class="faq-answer">Cole o link do vídeo do YouTube no campo acima, selecione o formato <strong>Vídeo MP4</strong>, clique em <strong>Baixar Agora</strong> e escolha onde salvar o arquivo.</p>
+                    </details>
+
+                    <details class="faq-item">
+                        <summary class="faq-question">Como converter YouTube para MP3?</summary>
+                        <p class="faq-answer">Cole o link do YouTube, selecione o formato <strong>Áudio MP3</strong> e clique em <strong>Baixar Agora</strong>. O áudio é extraído em qualidade 192 kbps automaticamente.</p>
+                    </details>
+
+                    <details class="faq-item">
+                        <summary class="faq-question">Funciona para TikTok e Instagram?</summary>
+                        <p class="faq-answer">Sim! Cole o link de qualquer vídeo do TikTok ou Instagram e baixe normalmente. O OmniDownloader suporta mais de 1000 plataformas via yt-dlp.</p>
+                    </details>
+
+                    <details class="faq-item">
+                        <summary class="faq-question">O download é gratuito e sem cadastro?</summary>
+                        <p class="faq-answer">Sim, o OmniDownloader é 100% gratuito, não exige cadastro, instalação de aplicativos ou extensões de navegador.</p>
+                    </details>
+
+                    <details class="faq-item">
+                        <summary class="faq-question">Posso pesquisar vídeos sem ter o link?</summary>
+                        <p class="faq-answer">Sim! Basta digitar o nome do vídeo ou artista no campo de busca. O OmniDownloader buscará automaticamente no YouTube e mostrará os resultados com thumbnail e duração.</p>
+                    </details>
+                </section>
+
             </div>
         </main>
 
         <!-- ======= Footer ======= -->
         <footer class="footer">
             <div class="container">
-                <p>© <?= date('Y') ?> <a href="https://andretsc.dev" target="_blank" rel="noopener noreferrer">Andre Silva</a></p>
+                <nav class="footer-nav" aria-label="Links do rodapé">
+                    <a href="https://andretsc.dev" target="_blank" rel="noopener noreferrer">Andre Silva</a>
+                </nav>
+                <p class="footer-copy">© <?= date('Y') ?> <a href="https://andretsc.dev" target="_blank" rel="noopener noreferrer">Andre Silva</a> · Todos os direitos reservados</p>
+                <p class="footer-disclaimer">Este site não armazena vídeos. Todo o conteúdo é de responsabilidade de seus respectivos donos.</p>
             </div>
         </footer>
 

@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /download.php
+Disallow: /api.php
+Disallow: /search.php
+
+Sitemap: https://omnidownloader.andretsc.dev/sitemap.xml

@@ -521,15 +521,28 @@ body {
 /* ---- Footer ------------------------------------------------------ */
 
 .footer {
-    padding: 1.5rem 0;
+    padding: 1.75rem 0;
     text-align: center;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
     margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
 }
 
-.footer p {
+.footer-nav {
+    display: none; /* hidden visually, present for crawlers */
+}
+
+.footer-copy {
     font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.45);
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.footer-disclaimer {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.28);
+    margin-top: 0.25rem;
 }
 
 .footer a {
@@ -542,6 +555,82 @@ body {
 .footer a:hover {
     color: #ffffff;
     text-decoration: underline;
+}
+
+/* ---- FAQ --------------------------------------------------------- */
+
+.faq {
+    margin-top: 2.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.faq-title {
+    font-size: clamp(1.1rem, 3vw, 1.35rem);
+    font-weight: 700;
+    color: #ffffff;
+    text-align: center;
+    margin-bottom: 1.25rem;
+    letter-spacing: -0.01em;
+}
+
+.faq-item {
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    margin-bottom: 0.625rem;
+    overflow: hidden;
+    transition: background 0.2s;
+}
+
+.faq-item[open] {
+    background: rgba(255, 255, 255, 0.11);
+}
+
+.faq-question {
+    padding: 0.875rem 1.125rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.faq-question::-webkit-details-marker { display: none; }
+
+.faq-question::after {
+    content: '+';
+    font-size: 1.25rem;
+    font-weight: 300;
+    color: var(--accent);
+    flex-shrink: 0;
+    transition: transform 0.2s;
+    line-height: 1;
+}
+
+.faq-item[open] .faq-question::after {
+    transform: rotate(45deg);
+}
+
+.faq-question:hover {
+    color: #ffffff;
+}
+
+.faq-answer {
+    padding: 0 1.125rem 1rem;
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.65);
+    line-height: 1.65;
+}
+
+.faq-answer strong {
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 600;
 }
 
 /* ---- Utilities --------------------------------------------------- */
