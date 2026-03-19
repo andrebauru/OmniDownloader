@@ -485,6 +485,7 @@ function he(string $s): string {
                             <div class="video-meta">
                                 <p id="videoTitle" class="video-title"></p>
                                 <p id="videoDuration" class="video-duration"></p>
+                                <span id="videoPlatform" class="result-platform hidden"></span>
                             </div>
                         </div>
 

@@ -87,6 +87,7 @@ if (!isset($_SESSION[$cacheKey])) {
             'thumbnail' => $entry['thumbnail']   ?? "https://i.ytimg.com/vi/{$id}/mqdefault.jpg",
             'duration'  => isset($entry['duration']) ? (int) $entry['duration'] : 0,
             'uploader'  => $entry['uploader']    ?? $entry['channel'] ?? '',
+            'platform'  => 'YouTube',
         ];
     }
 

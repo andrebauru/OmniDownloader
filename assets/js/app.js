@@ -36,7 +36,7 @@ const prevPageBtn     = document.getElementById('prevPageBtn');
 const nextPageBtn     = document.getElementById('nextPageBtn');
 const pageInfoEl      = document.getElementById('pageInfo');
 const counterEl       = document.getElementById('downloadCount');
-const progressFill    = document.getElementById('progressFill');
+const videoPlatform  = document.getElementById('videoPlatform');
 const progressPct     = document.getElementById('progressPct');
 const loadingStage    = document.getElementById('loadingStage');
 
@@ -97,7 +97,54 @@ function stopPolling() {
     timeoutHandle = null;
 }
 
-// ---- Progress Bar ------------------------------------------------------ //
+// ---- Platform Detection ------------------------------------------------- //
+
+const PLATFORM_MAP = {
+    'youtube': 'YouTube', 'youtube:tab': 'YouTube',
+    'tiktok': 'TikTok',
+    'instagram': 'Instagram',
+    'twitter': 'Twitter / X', 'x': 'Twitter / X',
+    'facebook': 'Facebook', 'facebook:video': 'Facebook',
+    'twitch:vod': 'Twitch', 'twitch:stream': 'Twitch',
+    'soundcloud': 'SoundCloud',
+    'vimeo': 'Vimeo',
+    'dailymotion': 'Dailymotion',
+    'reddit': 'Reddit',
+};
+
+function platformFromExtractor(extractor) {
+    if (!extractor) return null;
+    return PLATFORM_MAP[extractor.toLowerCase()] || extractor;
+}
+
+function platformFromUrl(url) {
+    if (!url) return null;
+    const u = url.toLowerCase();
+    if (u.includes('youtu.be') || u.includes('youtube.com')) return 'YouTube';
+    if (u.includes('tiktok.com'))                             return 'TikTok';
+    if (u.includes('instagram.com'))                          return 'Instagram';
+    if (u.includes('twitter.com') || u.includes('x.com'))    return 'Twitter / X';
+    if (u.includes('facebook.com') || u.includes('fb.watch'))return 'Facebook';
+    if (u.includes('twitch.tv'))                              return 'Twitch';
+    if (u.includes('soundcloud.com'))                         return 'SoundCloud';
+    if (u.includes('vimeo.com'))                              return 'Vimeo';
+    if (u.includes('dailymotion.com'))                        return 'Dailymotion';
+    if (u.includes('reddit.com'))                             return 'Reddit';
+    return null;
+}
+
+function setPlatformBadge(el, platform) {
+    if (!el) return;
+    if (platform) {
+        el.textContent = platform;
+        el.dataset.platform = platform;
+        el.classList.remove('hidden');
+    } else {
+        el.classList.add('hidden');
+    }
+}
+
+
 
 function animateProgressTo(target, durationMs) {
     const from  = progressCurrent;
@@ -254,6 +301,8 @@ async function fetchVideoInfo(url) {
 
         videoTitle.textContent    = data.title;
         videoDuration.textContent = data.duration ? '⏱ ' + formatDuration(data.duration) : '';
+        const platform = platformFromExtractor(data.extractor) || platformFromUrl(url);
+        setPlatformBadge(videoPlatform, platform);
         if (data.thumbnail) {
             videoThumb.src           = data.thumbnail;
             videoThumb.style.display = '';
@@ -309,7 +358,7 @@ async function doSearch(query, page) {
 function renderResults(results) {
     const dlLabel = escapeHtml(t('dl_result'));
     resultsGrid.innerHTML = results.map(item => `
-        <div class="result-item" data-url="${escapeHtml(item.url)}" data-title="${escapeHtml(item.title)}" role="button" tabindex="0">
+        <div class="result-item" data-url="${escapeHtml(item.url)}" data-title="${escapeHtml(item.title)}" data-platform="${escapeHtml(item.platform || '')}" role="button" tabindex="0">
             <div class="result-thumb-wrapper">
                 <img class="result-thumb" src="${escapeHtml(item.thumbnail)}"
                      alt="${escapeHtml(item.title)}" loading="lazy"
@@ -319,6 +368,7 @@ function renderResults(results) {
             <div class="result-info">
                 <p class="result-title">${escapeHtml(item.title)}</p>
                 <p class="result-meta">${escapeHtml(item.uploader || '')}</p>
+                ${item.platform ? `<span class="result-platform" data-platform="${escapeHtml(item.platform)}">${escapeHtml(item.platform)}</span>` : ''}
             </div>
             <button type="button" class="btn-select">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
@@ -338,14 +388,16 @@ function renderResults(results) {
 }
 
 function selectResult(el) {
-    const url   = el.dataset.url;
-    const title = el.dataset.title;
+    const url      = el.dataset.url;
+    const title    = el.dataset.title;
+    const platform = el.dataset.platform || platformFromUrl(url);
     urlInput.value = url;
     clearBtn.classList.remove('hidden');
     setMode('url');
     videoTitle.textContent    = title;
     videoDuration.textContent = '';
     videoThumb.style.display  = 'none';
+    setPlatformBadge(videoPlatform, platform);
     videoPreview.classList.remove('hidden');
     fetchVideoInfo(url);
     urlInput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });

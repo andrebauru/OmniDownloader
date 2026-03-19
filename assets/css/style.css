@@ -952,7 +952,33 @@ body {
     }
 }
 
-/* ---- Header Inner (logo + lang switcher) ------------------------- */
+/* ---- Platform Badge ---------------------------------------------- */
+
+.result-platform {
+    display: inline-block;
+    font-size: 0.67rem;
+    font-weight: 700;
+    padding: 0.1rem 0.55rem;
+    border-radius: 99px;
+    background: var(--primary);
+    color: #ffffff;
+    margin-top: 0.3rem;
+    letter-spacing: 0.02em;
+    vertical-align: middle;
+}
+
+.result-platform[data-platform="YouTube"]    { background: #FF0000; }
+.result-platform[data-platform="TikTok"]     { background: #010101; }
+.result-platform[data-platform="Instagram"]  { background: linear-gradient(90deg,#f09433,#dc2743,#bc1888); }
+.result-platform[data-platform="Twitter / X"]{ background: #000000; }
+.result-platform[data-platform="Facebook"]   { background: #1877F2; }
+.result-platform[data-platform="Twitch"]     { background: #9146FF; }
+.result-platform[data-platform="SoundCloud"] { background: #FF5500; }
+.result-platform[data-platform="Vimeo"]      { background: #1AB7EA; }
+.result-platform[data-platform="Dailymotion"]{ background: #0066DC; }
+.result-platform[data-platform="Reddit"]     { background: #FF4500; }
+
+
 
 .header-inner {
     display: flex;
