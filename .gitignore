@@ -30,4 +30,4 @@ gemini_history.txt
 error_log
 
 # Counter data (runtime, not committed)
-data/downloads.count
+data/downloads.json
