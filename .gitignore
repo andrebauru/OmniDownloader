@@ -28,3 +28,6 @@ gemini_history.txt
 # PHP temp / logs
 *.log
 error_log
+
+# Counter data (runtime, not committed)
+data/downloads.count

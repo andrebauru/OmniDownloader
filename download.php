@@ -120,6 +120,10 @@ $fileName = basename($filePath);
 $fileSize = filesize($filePath);
 $mimeType = ($format === 'mp3') ? 'audio/mpeg' : 'video/mp4';
 
+// ---- Increment Download Counter ----------------------------------------- //
+require_once __DIR__ . '/includes/counter.php';
+incrementDownloadCount();
+
 // ---- Set Download Token Cookie ------------------------------------------ //
 // The frontend JS polls for this cookie to detect when the download starts.
 

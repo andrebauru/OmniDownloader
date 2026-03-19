@@ -1,6 +1,9 @@
 <?php
 $downloadToken = bin2hex(random_bytes(16));
 
+require_once __DIR__ . '/includes/counter.php';
+$downloadCount = getDownloadCount();
+
 // Detect protocol and host for canonical/OG URLs
 $protocol  = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
 $host      = $_SERVER['HTTP_HOST'] ?? 'omnidownloader.andretsc.dev';
@@ -152,6 +155,12 @@ $ogImage   = $siteUrl . '/assets/img/og-image.png';
                 <div class="hero">
                     <h1 class="hero-title">Baixe vídeos e músicas</h1>
                     <p class="hero-subtitle">YouTube, TikTok, Instagram e mais de 1000 plataformas</p>
+                    <div class="stats-widget" aria-live="polite">
+                        <span class="stats-dot" aria-hidden="true"></span>
+                        <span id="downloadCount" class="stats-number"
+                              data-target="<?= $downloadCount ?>">0</span>
+                        <span class="stats-label">downloads realizados</span>
+                    </div>
                 </div>
 
                 <!-- Download Card -->

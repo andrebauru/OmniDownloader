@@ -3,5 +3,8 @@ Allow: /
 Disallow: /download.php
 Disallow: /api.php
 Disallow: /search.php
+Disallow: /stats.php
+Disallow: /data/
+Disallow: /includes/
 
 Sitemap: https://omnidownloader.andretsc.dev/sitemap.xml

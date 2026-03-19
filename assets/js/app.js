@@ -176,7 +176,10 @@ downloadForm.addEventListener('submit', () => {
             deleteCookie('fileDownloadToken');
             stopPolling();
             // Brief delay so the browser save dialog can appear before we reset UI
-            setTimeout(showForm, 1500);
+            setTimeout(() => {
+                showForm();
+                refreshCounter();
+            }, 1500);
         }
     }, 500);
 
@@ -219,3 +222,40 @@ tryAgainBtn.addEventListener('click', () => {
     showForm();
     urlInput.focus();
 });
+
+// ---- Download Counter -------------------------------------------------- //
+
+const counterEl = document.getElementById('downloadCount');
+
+function animateCount(el, from, to, duration) {
+    if (from >= to) {
+        el.textContent = to.toLocaleString('pt-BR');
+        return;
+    }
+    const startTime = performance.now();
+    function step(now) {
+        const progress = Math.min((now - startTime) / duration, 1);
+        const eased    = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+        el.textContent = Math.round(from + (to - from) * eased).toLocaleString('pt-BR');
+        if (progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+}
+
+async function refreshCounter() {
+    try {
+        const res  = await fetch('stats.php');
+        const data = await res.json();
+        if (typeof data.count === 'number' && counterEl) {
+            const current = parseInt(counterEl.textContent.replace(/\D/g, '')) || 0;
+            animateCount(counterEl, current, data.count, 900);
+        }
+    } catch { /* silently ignore */ }
+}
+
+// Animate counter from 0 to real value on page load
+if (counterEl) {
+    const target = parseInt(counterEl.dataset.target) || 0;
+    // Small delay so the page has rendered before animating
+    setTimeout(() => animateCount(counterEl, 0, target, 1200), 400);
+}
