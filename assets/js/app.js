@@ -3,7 +3,6 @@
 /* ================================================
    OmniDownloader — Frontend JavaScript
    © Andre Silva | andretsc.dev
-   Multi-language: pt, en, es, ja
    ================================================ */
 
 // ---- i18n helper ------------------------------------------------------- //
@@ -26,6 +25,7 @@ const videoPreview    = document.getElementById('videoPreview');
 const videoTitle      = document.getElementById('videoTitle');
 const videoThumb      = document.getElementById('videoThumb');
 const videoDuration   = document.getElementById('videoDuration');
+const videoPlatform   = document.getElementById('videoPlatform');
 const downloadFrame   = document.getElementById('downloadFrame');
 const downloadSection = document.getElementById('downloadSection');
 const searchSection   = document.getElementById('searchSection');
@@ -36,66 +36,26 @@ const prevPageBtn     = document.getElementById('prevPageBtn');
 const nextPageBtn     = document.getElementById('nextPageBtn');
 const pageInfoEl      = document.getElementById('pageInfo');
 const counterEl       = document.getElementById('downloadCount');
-const videoPlatform  = document.getElementById('videoPlatform');
+const progressFill    = document.getElementById('progressFill');
 const progressPct     = document.getElementById('progressPct');
 const loadingStage    = document.getElementById('loadingStage');
 
 // ---- State ------------------------------------------------------------- //
 
-let pollInterval      = null;
-let timeoutHandle     = null;
-let infoTimer         = null;
-let searchTimer       = null;
+let pollInterval       = null;
+let timeoutHandle      = null;
+let infoTimer          = null;
+let searchTimer        = null;
 let progressStageTimer = null;
-let progressAnimFrame = null;
+let progressAnimFrame  = null;
 
-let searchQuery = '';
-let searchPage  = 1;
-let searchPages = 1;
-let mode        = 'idle'; // 'idle' | 'url' | 'search'
+let searchQuery    = '';
+let searchPage     = 1;
+let searchPages    = 1;
+let searchPlatform = 'youtube';
+let mode           = 'idle'; // 'idle' | 'url' | 'search'
 let progressCurrent = 0;
-
-// ---- Helpers ------------------------------------------------------------ //
-
-function isUrl(text) {
-    return /^https?:\/\//i.test(text) || /^www\./i.test(text);
-}
-
-function escapeHtml(str) {
-    if (!str) return '';
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-}
-
-function formatDuration(seconds) {
-    if (!seconds || seconds < 1) return '';
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = Math.floor(seconds % 60);
-    if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-    return `${m}:${String(s).padStart(2,'0')}`;
-}
-
-function getCookie(name) {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
-    return null;
-}
-
-function deleteCookie(name) {
-    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-}
-
-function stopPolling() {
-    clearInterval(pollInterval);
-    clearTimeout(timeoutHandle);
-    pollInterval  = null;
-    timeoutHandle = null;
-}
+let activePreviewId = null; // currently open audio preview
 
 // ---- Platform Detection ------------------------------------------------- //
 
@@ -144,7 +104,89 @@ function setPlatformBadge(el, platform) {
     }
 }
 
+// ---- Helpers ------------------------------------------------------------ //
 
+function isUrl(text) {
+    return /^https?:\/\//i.test(text) || /^www\./i.test(text);
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function formatDuration(seconds) {
+    if (!seconds || seconds < 1) return '';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    return `${m}:${String(s).padStart(2,'0')}`;
+}
+
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+}
+
+function deleteCookie(name) {
+    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+}
+
+function stopPolling() {
+    clearInterval(pollInterval);
+    clearTimeout(timeoutHandle);
+    pollInterval  = null;
+    timeoutHandle = null;
+}
+
+// ---- Audio Preview ------------------------------------------------------ //
+
+function closeAudioPreview() {
+    document.querySelectorAll('.audio-preview-box').forEach(el => el.remove());
+    document.querySelectorAll('.btn-audio-preview.active').forEach(el => el.classList.remove('active'));
+    activePreviewId = null;
+}
+
+function toggleAudioPreview(id, platform, el) {
+    if (activePreviewId === id) {
+        closeAudioPreview();
+        return;
+    }
+    closeAudioPreview();
+    activePreviewId = id;
+    el.classList.add('active');
+
+    const box = document.createElement('div');
+    box.className = 'audio-preview-box';
+
+    if (platform === 'SoundCloud') {
+        const scUrl = encodeURIComponent(`https://soundcloud.com/${id}`);
+        box.innerHTML = `
+            <iframe scrolling="no" frameborder="no" allow="autoplay"
+                src="https://w.soundcloud.com/player/?url=${scUrl}&color=%231565C0&auto_play=true&show_artwork=false&show_user=false&buying=false&liking=false&sharing=false&download=false">
+            </iframe>`;
+    } else {
+        // YouTube
+        box.innerHTML = `
+            <iframe src="https://www.youtube.com/embed/${encodeURIComponent(id)}?autoplay=1&controls=1&modestbranding=1&rel=0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen frameborder="0" loading="lazy">
+            </iframe>`;
+    }
+
+    const resultItem = el.closest('.result-item');
+    resultItem.after(box);
+    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ---- Progress Bar ------------------------------------------------------ //
 
 function animateProgressTo(target, durationMs) {
     const from  = progressCurrent;
@@ -152,7 +194,7 @@ function animateProgressTo(target, durationMs) {
     if (progressAnimFrame) cancelAnimationFrame(progressAnimFrame);
 
     function step(now) {
-        const elapsed = Math.min((now - start) / durationMs, 1);
+        const elapsed   = Math.min((now - start) / durationMs, 1);
         progressCurrent = from + (target - from) * elapsed;
         const pct = Math.round(progressCurrent);
         if (progressFill) progressFill.style.width = pct + '%';
@@ -198,10 +240,7 @@ function completeProgressBar(callback) {
 
 function stopProgressBar() {
     clearTimeout(progressStageTimer);
-    if (progressAnimFrame) {
-        cancelAnimationFrame(progressAnimFrame);
-        progressAnimFrame = null;
-    }
+    if (progressAnimFrame) { cancelAnimationFrame(progressAnimFrame); progressAnimFrame = null; }
 }
 
 // ---- Mode Switching ----------------------------------------------------- //
@@ -219,6 +258,7 @@ function resetToIdle() {
     searchSection.classList.add('hidden');
     downloadSection.classList.remove('hidden');
     videoPreview.classList.add('hidden');
+    closeAudioPreview();
 }
 
 // ---- Download UI -------------------------------------------------------- //
@@ -303,6 +343,7 @@ async function fetchVideoInfo(url) {
         videoDuration.textContent = data.duration ? '⏱ ' + formatDuration(data.duration) : '';
         const platform = platformFromExtractor(data.extractor) || platformFromUrl(url);
         setPlatformBadge(videoPlatform, platform);
+
         if (data.thumbnail) {
             videoThumb.src           = data.thumbnail;
             videoThumb.style.display = '';
@@ -313,11 +354,24 @@ async function fetchVideoInfo(url) {
     } catch { /* optional */ }
 }
 
+// ---- Search Platform Switcher ------------------------------------------- //
+
+document.addEventListener('click', e => {
+    const btn = e.target.closest('.btn-platform');
+    if (!btn) return;
+    const plat = btn.dataset.platform;
+    if (plat === searchPlatform) return;
+    searchPlatform = plat;
+    document.querySelectorAll('.btn-platform').forEach(b => b.classList.toggle('active', b.dataset.platform === plat));
+    if (searchQuery) doSearch(searchQuery, 1);
+});
+
 // ---- Search ------------------------------------------------------------- //
 
 async function doSearch(query, page) {
     searchQuery = query;
     searchPage  = page;
+    closeAudioPreview();
 
     const loadMsg = t('srch_load').replace('%s', `<strong>${escapeHtml(query)}</strong>`);
     searchStatus.innerHTML = `
@@ -329,7 +383,7 @@ async function doSearch(query, page) {
     pagination.classList.add('hidden');
 
     try {
-        const res  = await fetch(`search.php?q=${encodeURIComponent(query)}&page=${page}`);
+        const res  = await fetch(`search.php?q=${encodeURIComponent(query)}&page=${page}&platform=${encodeURIComponent(searchPlatform)}`);
         const data = await res.json();
 
         if (data.error) {
@@ -358,7 +412,12 @@ async function doSearch(query, page) {
 function renderResults(results) {
     const dlLabel = escapeHtml(t('dl_result'));
     resultsGrid.innerHTML = results.map(item => `
-        <div class="result-item" data-url="${escapeHtml(item.url)}" data-title="${escapeHtml(item.title)}" data-platform="${escapeHtml(item.platform || '')}" role="button" tabindex="0">
+        <div class="result-item"
+             data-url="${escapeHtml(item.url)}"
+             data-title="${escapeHtml(item.title)}"
+             data-platform="${escapeHtml(item.platform || '')}"
+             data-id="${escapeHtml(item.id || '')}"
+             role="button" tabindex="0">
             <div class="result-thumb-wrapper">
                 <img class="result-thumb" src="${escapeHtml(item.thumbnail)}"
                      alt="${escapeHtml(item.title)}" loading="lazy"
@@ -370,19 +429,42 @@ function renderResults(results) {
                 <p class="result-meta">${escapeHtml(item.uploader || '')}</p>
                 ${item.platform ? `<span class="result-platform" data-platform="${escapeHtml(item.platform)}">${escapeHtml(item.platform)}</span>` : ''}
             </div>
-            <button type="button" class="btn-select">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                     fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-                    <polyline points="7 10 12 15 17 10"/>
-                    <line x1="12" y1="15" x2="12" y2="3"/>
-                </svg>
-                ${dlLabel}
-            </button>
+            <div class="result-actions">
+                <button type="button" class="btn-audio-preview" title="Preview"
+                        data-id="${escapeHtml(item.id || '')}"
+                        data-platform="${escapeHtml(item.platform || '')}">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                         fill="currentColor" aria-hidden="true">
+                        <polygon points="5 3 19 12 5 21 5 3"/>
+                    </svg>
+                </button>
+                <button type="button" class="btn-select" data-action="select">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    ${dlLabel}
+                </button>
+            </div>
         </div>
     `).join('');
 
     resultsGrid.querySelectorAll('.result-item').forEach(el => {
-        el.addEventListener('click',   () => selectResult(el));
+        // Download button
+        el.querySelector('[data-action="select"]').addEventListener('click', ev => {
+            ev.stopPropagation();
+            selectResult(el);
+        });
+        // Audio preview button
+        el.querySelector('.btn-audio-preview').addEventListener('click', ev => {
+            ev.stopPropagation();
+            const id       = ev.currentTarget.dataset.id;
+            const platform = ev.currentTarget.dataset.platform;
+            toggleAudioPreview(id, platform, ev.currentTarget);
+        });
+        // Click on row (excluding buttons) = select
+        el.addEventListener('click', () => selectResult(el));
         el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') selectResult(el); });
     });
 }
@@ -391,14 +473,19 @@ function selectResult(el) {
     const url      = el.dataset.url;
     const title    = el.dataset.title;
     const platform = el.dataset.platform || platformFromUrl(url);
+
     urlInput.value = url;
     clearBtn.classList.remove('hidden');
     setMode('url');
+
+    // Show preview immediately with what we know
     videoTitle.textContent    = title;
     videoDuration.textContent = '';
     videoThumb.style.display  = 'none';
     setPlatformBadge(videoPlatform, platform);
     videoPreview.classList.remove('hidden');
+
+    // Then enrich with API data (thumbnail, duration, etc.)
     fetchVideoInfo(url);
     urlInput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
@@ -406,8 +493,7 @@ function selectResult(el) {
 function updatePagination(page, totalPages) {
     if (totalPages <= 1) { pagination.classList.add('hidden'); return; }
     pagination.classList.remove('hidden');
-    // handle both "%d / %d ページ" (ja) and "Page %d of %d" (en/pt/es)
-    const tpl = t('page_info');
+    const tpl   = t('page_info');
     const parts = [page, totalPages];
     let idx = 0;
     pageInfoEl.textContent = tpl.replace(/%d/g, () => parts[idx++]);
@@ -438,10 +524,7 @@ downloadForm.addEventListener('submit', e => {
         if (getCookie('fileDownloadToken') === DOWNLOAD_TOKEN) {
             deleteCookie('fileDownloadToken');
             stopPolling();
-            completeProgressBar(() => {
-                showForm();
-                refreshCounter();
-            });
+            completeProgressBar(() => { showForm(); refreshCounter(); });
         }
     }, 500);
 

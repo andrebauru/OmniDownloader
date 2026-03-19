@@ -491,6 +491,14 @@ function he(string $s): string {
 
                         <!-- Search Results -->
                         <div id="searchSection" class="search-section hidden">
+                            <div class="search-platform-bar">
+                                <button type="button" class="btn-platform active" data-platform="youtube">
+                                    <span class="platform-dot" style="background:#FF0000"></span>YouTube
+                                </button>
+                                <button type="button" class="btn-platform" data-platform="soundcloud">
+                                    <span class="platform-dot" style="background:#FF5500"></span>SoundCloud
+                                </button>
+                            </div>
                             <div id="searchStatus" class="search-status"></div>
                             <div id="resultsGrid" class="results-grid"></div>
                             <div id="pagination" class="pagination hidden">

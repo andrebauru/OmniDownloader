@@ -952,6 +952,106 @@ body {
     }
 }
 
+/* ---- Search Platform Bar ----------------------------------------- */
+
+.search-platform-bar {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.875rem;
+}
+
+.btn-platform {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.875rem;
+    background: var(--input-bg);
+    border: 2px solid var(--input-border);
+    border-radius: 99px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: border-color 0.18s, color 0.18s, background 0.18s;
+    font-family: inherit;
+}
+
+.btn-platform:hover {
+    border-color: var(--primary-light);
+    color: var(--primary);
+}
+
+.btn-platform.active {
+    border-color: var(--primary);
+    background: #E3F2FD;
+    color: var(--primary-dark);
+}
+
+.platform-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* ---- Result Actions (preview + download buttons) ----------------- */
+
+.result-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    flex-shrink: 0;
+}
+
+.btn-audio-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    background: #E3F2FD;
+    border: 1.5px solid var(--primary-light);
+    border-radius: 50%;
+    color: var(--primary);
+    cursor: pointer;
+    transition: background 0.18s, color 0.18s, transform 0.12s;
+    font-family: inherit;
+    flex-shrink: 0;
+}
+
+.btn-audio-preview:hover {
+    background: var(--primary);
+    color: #fff;
+    transform: scale(1.08);
+}
+
+.btn-audio-preview.active {
+    background: var(--primary);
+    color: #fff;
+}
+
+/* ---- Audio Preview Box ------------------------------------------- */
+
+.audio-preview-box {
+    border-radius: 10px;
+    overflow: hidden;
+    background: #000;
+    margin: 0.25rem 0 0.5rem;
+    animation: fadeInDown 0.2s ease;
+}
+
+.audio-preview-box iframe {
+    width: 100%;
+    height: 200px;
+    display: block;
+    border: none;
+}
+
+@media (max-width: 480px) {
+    .audio-preview-box iframe { height: 170px; }
+    .result-actions { flex-direction: row; align-items: center; }
+}
+
 /* ---- Platform Badge ---------------------------------------------- */
 
 .result-platform {
@@ -964,7 +1064,6 @@ body {
     color: #ffffff;
     margin-top: 0.3rem;
     letter-spacing: 0.02em;
-    vertical-align: middle;
 }
 
 .result-platform[data-platform="YouTube"]    { background: #FF0000; }

@@ -24,26 +24,30 @@ function jsonError(string $msg, int $code = 400): never
 
 // ---- Input -------------------------------------------------------------- //
 
-$query   = isset($_GET['q'])    ? trim($_GET['q'])    : '';
-$page    = isset($_GET['page']) ? (int) $_GET['page'] : 1;
-$perPage = 10;
+$query    = isset($_GET['q'])        ? trim($_GET['q'])        : '';
+$page     = isset($_GET['page'])    ? (int) $_GET['page']    : 1;
+$platform = isset($_GET['platform']) ? trim($_GET['platform']) : 'youtube';
+$perPage  = 10;
 
 if ($query === '' || mb_strlen($query) > 200) {
     jsonError('Termo de busca inválido.');
 }
 
-$page = max(1, $page);
+$page     = max(1, $page);
+$platform = in_array($platform, ['youtube', 'soundcloud'], true) ? $platform : 'youtube';
+
+$searchPrefix = $platform === 'soundcloud' ? 'scsearch30:' : 'ytsearch30:';
 
 // ---- Session Cache Key -------------------------------------------------- //
 
-$cacheKey = 'search_' . md5(mb_strtolower($query));
+$cacheKey = 'search_' . md5(mb_strtolower($query) . '_' . $platform);
 
 // ---- Fetch Results (only when not cached) ------------------------------- //
 
 if (!isset($_SESSION[$cacheKey])) {
 
     // Fetch up to 30 results so pages 1-3 work without re-querying
-    $escapedQuery = escapeshellarg('ytsearch30:' . $query);
+    $escapedQuery = escapeshellarg($searchPrefix . $query);
     $cmd          = "yt-dlp {$escapedQuery} --flat-playlist --dump-single-json --no-download 2>&1";
 
     exec($cmd, $outputLines, $returnCode);
@@ -84,10 +88,10 @@ if (!isset($_SESSION[$cacheKey])) {
             'id'        => $id,
             'title'     => $entry['title']       ?? 'Sem título',
             'url'       => $entry['webpage_url'] ?? $entry['url'] ?? "https://www.youtube.com/watch?v={$id}",
-            'thumbnail' => $entry['thumbnail']   ?? "https://i.ytimg.com/vi/{$id}/mqdefault.jpg",
+            'thumbnail' => $entry['thumbnail']   ?? ($platform === 'youtube' ? "https://i.ytimg.com/vi/{$id}/mqdefault.jpg" : ''),
             'duration'  => isset($entry['duration']) ? (int) $entry['duration'] : 0,
             'uploader'  => $entry['uploader']    ?? $entry['channel'] ?? '',
-            'platform'  => 'YouTube',
+            'platform'  => $platform === 'soundcloud' ? 'SoundCloud' : 'YouTube',
         ];
     }
 
