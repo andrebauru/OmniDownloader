@@ -3,17 +3,17 @@ build/
 dist/
 *.spec
 
-# Python
+# Python (legacy — desktop version)
 __pycache__/
 *.py[cod]
 *.pyo
+.venv/
 
 # Windows artifacts
-nul
 Thumbs.db
 Desktop.ini
 
-# ffmpeg binaries (large files)
+# FFmpeg binaries (large files)
 ffmpeg_bin/
 
 # App config (user-specific)
@@ -24,3 +24,7 @@ gemini_history.txt
 
 # Copilot session
 .claude/
+
+# PHP temp / logs
+*.log
+error_log

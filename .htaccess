@@ -1,0 +1,63 @@
+# ================================================
+# OmniDownloader — Apache Configuration
+# ================================================
+
+# Disable directory listing
+Options -Indexes -Includes
+
+# ---- Security Headers -------------------------------------------- #
+
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# ---- Block Sensitive Files --------------------------------------- #
+
+<FilesMatch "\.(env|log|py|pyc|spec|bat|reg|gitignore|sh)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+<Files "config.json">
+    Order allow,deny
+    Deny from all
+</Files>
+
+<Files "gemini_history.txt">
+    Order allow,deny
+    Deny from all
+</Files>
+
+# ---- PHP Limits for Large Downloads ------------------------------ #
+
+<IfModule mod_php.c>
+    php_value max_execution_time 300
+    php_value memory_limit 256M
+    php_value post_max_size 10M
+</IfModule>
+
+<IfModule mod_php8.c>
+    php_value max_execution_time 300
+    php_value memory_limit 256M
+    php_value post_max_size 10M
+</IfModule>
+
+# ---- Static Asset Caching ---------------------------------------- #
+
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css                  "access plus 1 week"
+    ExpiresByType application/javascript    "access plus 1 week"
+    ExpiresByType image/png                 "access plus 1 month"
+    ExpiresByType image/svg+xml             "access plus 1 month"
+    ExpiresByType image/x-icon              "access plus 1 year"
+</IfModule>
+
+# ---- GZIP Compression -------------------------------------------- #
+
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css application/javascript text/plain
+</IfModule>

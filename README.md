@@ -1,23 +1,20 @@
 # OmniDownloader
 
-**OmniDownloader** é uma aplicação desktop com interface gráfica (Python/Tkinter) para pesquisar e baixar mídias do **YouTube**, **TikTok**, **Instagram** e outras plataformas suportadas pelo `yt-dlp`.
+**OmniDownloader** é uma aplicação web em PHP para baixar vídeos e áudio de **YouTube**, **TikTok**, **Instagram** e mais de **1000 plataformas** suportadas pelo `yt-dlp`.
 
-> Baixe vídeos, MP3s e carrosseis de fotos do TikTok com apenas alguns cliques.
+> Cole o link, escolha o formato e o download começa automaticamente com o diálogo de salvar do navegador.
 
 ---
 
 ## Funcionalidades
 
-- **Busca Híbrida e Cancelável:** Aceita termos de busca (YouTube) ou links diretos de qualquer plataforma suportada. A busca pode ser interrompida a qualquer momento.
-- **Download de Vídeo:** Baixa o vídeo em melhor qualidade disponível (com áudio combinado via FFmpeg).
-- **Download de MP3:** Extrai o áudio em MP3 com qualidade de 192 kbps. A URL original é salva nos metadados do arquivo.
-- **Carrossel TikTok:** Suporte nativo a posts de fotos/carrossel do TikTok — baixa todas as imagens e o áudio separadamente via `gallery-dl`.
-- **URLs encurtadas:** Resolve automaticamente links curtos (ex: `vt.tiktok.com/...`) antes de processar.
-- **Preview de Áudio:** Ouça os primeiros segundos de um vídeo antes de baixar (requer VLC Media Player).
-- **Menu de Contexto no Windows:** Integração opcional ao Explorer para abrir a URL de um MP3 diretamente no navegador (`add_context_menu.reg`).
-- **Colar com um clique:** Clique com o botão esquerdo na caixa de busca (quando vazia) para colar automaticamente a URL da área de transferência.
-- **Menu de contexto na busca:** Clique com o botão direito para Colar / Copiar / Selecionar Tudo / Limpar.
-- **Pasta de destino configurável:** A última pasta usada é salva em `config.json`.
+- **Download de Vídeo (MP4):** Baixa em melhor qualidade disponível com áudio combinado via FFmpeg.
+- **Download de Áudio (MP3):** Extrai o áudio em MP3 com qualidade de 192 kbps.
+- **Preview de Vídeo:** Ao colar a URL, exibe título e thumbnail do vídeo automaticamente.
+- **Botão Colar:** Cola automaticamente a URL da área de transferência com um clique.
+- **Diálogo de Salvar Nativo:** O arquivo é transmitido diretamente ao navegador, que abre o popup "Salvar como".
+- **Interface Responsiva:** Funciona em desktops, tablets e celulares.
+- **Proteção Básica contra SSRF:** Bloqueia URLs apontando para IPs privados/reservados.
 
 ---
 
@@ -32,43 +29,46 @@
 
 ---
 
-## Arquivos do Projeto
+## Estrutura do Projeto
 
 | Arquivo | Descrição |
 |---|---|
-| `omni_downloader.py` | Aplicação principal |
-| `open_url_from_mp3.py` | Abre a URL salva em um MP3 no navegador |
-| `convert_icon.py` | Converte `icon.png` → `icon.ico` |
-| `build.bat` | Compila o executável `.exe` com PyInstaller |
-| `config.json` | Salva a última pasta de downloads |
-| `icon.png` / `icon.ico` | Ícones da aplicação |
-| `ffmpeg_bin/` | Binários do FFmpeg (merge de vídeo/áudio) |
-| `add_context_menu.reg` | Adiciona entrada no menu de contexto do Windows |
-| `remove_context_menu.reg` | Remove a entrada do menu de contexto |
+| `index.php` | Página principal (formulário + UI) |
+| `download.php` | Processa o download e faz o stream do arquivo |
+| `api.php` | API JSON para buscar metadados do vídeo |
+| `assets/css/style.css` | Estilos responsivos |
+| `assets/js/app.js` | Lógica de frontend (preview, loading, erros) |
+| `.htaccess` | Configuração Apache (segurança, cache, compressão) |
 
 ---
 
-## Como Compilar (Gerar o .exe)
+## Requisitos do Servidor
 
-1. **Instale as dependências Python:**
-   ```
-   pip install pyinstaller Pillow mutagen yt-dlp python-vlc gallery-dl
-   ```
+- PHP 8.0+
+- `yt-dlp` instalado e disponível no `PATH` do servidor
+- `ffmpeg` instalado (necessário para merge de vídeo/áudio e extração de MP3)
+- Apache com `mod_rewrite` (ou Nginx com configuração equivalente)
 
-2. **Execute o script de compilação:**
-   ```
-   build.bat
-   ```
-   Ou dê duplo-clique em `build.bat`. O executável será gerado em `dist/`.
+### Instalar yt-dlp e FFmpeg (Linux/Ubuntu)
 
----
+```bash
+# yt-dlp
+pip install yt-dlp
+# ou
+curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+chmod +x /usr/local/bin/yt-dlp
 
-## Requisitos
+# FFmpeg
+apt install ffmpeg
+```
 
-- Python 3.10+
-- FFmpeg (incluído em `ffmpeg_bin/`)
-- `gallery-dl` instalado (para carrosseis TikTok)
-- VLC Media Player (opcional, para preview de áudio)
+### Rodar localmente (PHP built-in server)
+
+```bash
+php -S localhost:8080
+```
+
+Acesse `http://localhost:8080` no navegador.
 
 ---
 
