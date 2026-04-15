@@ -174,9 +174,13 @@ $cmd = buildCommand($baseArgs) . ' 2>&1';
 // ---- Execute yt-dlp ----------------------------------------------------- //
 
 $isYoutube = isYoutubeUrl($url);
+$isInstagram = stripos($url, 'instagram.com') !== false;
+$isTwitter = stripos($url, 'twitter.com') !== false || stripos($url, 'x.com') !== false;
+
 $attempts = [$baseArgs];
 
-if ($isYoutube) {
+// Try with cookies for platforms that often require authentication
+if ($isYoutube || $isInstagram || $isTwitter) {
     $configuredCookieArgs = getConfiguredCookieArgs();
     if (!empty($configuredCookieArgs)) {
         $attempts[] = array_merge($baseArgs, $configuredCookieArgs);
@@ -203,7 +207,17 @@ foreach ($attempts as $attemptArgs) {
         break;
     }
 
-    if (!$isYoutube || !isAntiBotOutput($attemptOutput)) {
+    // For these platforms, always try next attempt if current failed
+    // For YouTube, also check for anti-bot; for others, check if error is recoverable
+    $shouldContinue = false;
+    if ($isYoutube) {
+        $shouldContinue = isAntiBotOutput($attemptOutput);
+    } elseif ($isInstagram || $isTwitter) {
+        // For Instagram/Twitter, try next attempt if we have authentication attempts left
+        $shouldContinue = (count($attempts) > 1);
+    }
+    
+    if (!$shouldContinue) {
         break;
     }
 }
