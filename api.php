@@ -34,6 +34,53 @@ function isSafeUrl(string $url): bool
     ) !== false;
 }
 
+function isYoutubeUrl(string $url): bool
+{
+    $u = strtolower($url);
+    return str_contains($u, 'youtube.com') || str_contains($u, 'youtu.be');
+}
+
+function getConfiguredCookieArgs(): array
+{
+    $cookiesFromBrowser = trim((string) getenv('YTDLP_COOKIES_FROM_BROWSER'));
+    if ($cookiesFromBrowser !== '') {
+        return ['--cookies-from-browser', $cookiesFromBrowser];
+    }
+
+    $cookieFileEnv = trim((string) getenv('YTDLP_COOKIES_FILE'));
+    if ($cookieFileEnv !== '' && is_file($cookieFileEnv)) {
+        return ['--cookies', $cookieFileEnv];
+    }
+
+    $localCookieFile = __DIR__ . DIRECTORY_SEPARATOR . 'cookies.txt';
+    if (is_file($localCookieFile)) {
+        return ['--cookies', $localCookieFile];
+    }
+
+    return [];
+}
+
+function getAutomaticBrowserCookieArgSets(): array
+{
+    return [
+        ['--cookies-from-browser', 'chrome'],
+        ['--cookies-from-browser', 'edge'],
+        ['--cookies-from-browser', 'firefox'],
+        ['--cookies-from-browser', 'brave'],
+    ];
+}
+
+function isAntiBotOutput(array $outputLines): bool
+{
+    $detail = mb_strtolower(implode(' ', array_slice($outputLines, -12)));
+    $detail = str_replace(["’", "\u{2019}"], "'", $detail);
+
+    return str_contains($detail, "sign in to confirm you're not a bot")
+        || str_contains($detail, 'please sign in')
+        || str_contains($detail, 'use --cookies-from-browser')
+        || str_contains($detail, 'use --cookies for the authentication');
+}
+
 // ---- Input Validation --------------------------------------------------- //
 
 $url = isset($_GET['url']) ? trim($_GET['url']) : '';
@@ -48,12 +95,63 @@ if (!isSafeUrl($url)) {
 
 // ---- Fetch Metadata via yt-dlp ------------------------------------------ //
 
-$escapedUrl = escapeshellarg($url);
-$cmd        = "yt-dlp --no-playlist --dump-single-json --no-download {$escapedUrl} 2>&1";
+$args = [
+    'yt-dlp',
+    '--no-playlist',
+    '--no-warnings',
+    '--socket-timeout', '20',
+    '--retries', '3',
+    '--dump-single-json',
+    '--no-download',
+];
 
-exec($cmd, $outputLines, $returnCode);
+if (isYoutubeUrl($url)) {
+    $args[] = '--extractor-args';
+    $args[] = 'youtube:player_client=android,web';
+}
+
+$args[] = $url;
+
+$isYoutube = isYoutubeUrl($url);
+$attempts = [$args];
+
+if ($isYoutube) {
+    $configuredCookieArgs = getConfiguredCookieArgs();
+    if (!empty($configuredCookieArgs)) {
+        $attempts[] = array_merge($args, $configuredCookieArgs);
+    }
+    foreach (getAutomaticBrowserCookieArgSets() as $cookieArgSet) {
+        $attempts[] = array_merge($args, $cookieArgSet);
+    }
+}
+
+$outputLines = [];
+$returnCode = 1;
+
+foreach ($attempts as $attemptArgs) {
+    $attemptOutput = [];
+    $attemptCode = 1;
+    $cmd = implode(' ', array_map('escapeshellarg', $attemptArgs)) . ' 2>&1';
+    exec($cmd, $attemptOutput, $attemptCode);
+
+    $outputLines = $attemptOutput;
+    $returnCode = $attemptCode;
+
+    if ($attemptCode === 0) {
+        break;
+    }
+
+    if (!$isYoutube || !isAntiBotOutput($attemptOutput)) {
+        break;
+    }
+}
 
 if ($returnCode !== 0) {
+    $detail = trim(implode(' ', array_slice($outputLines, -5)));
+    $normalizedDetail = str_replace(["’", "\u{2019}"], "'", mb_strtolower($detail));
+    if (str_contains($normalizedDetail, "sign in to confirm you're not a bot")) {
+        jsonError('YouTube exigiu verificação anti-bot para este vídeo. O servidor tentou cookies automaticamente, mas não conseguiu autenticar.', 429);
+    }
     jsonError('Não foi possível obter informações do vídeo.', 422);
 }
 

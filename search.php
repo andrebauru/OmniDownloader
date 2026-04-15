@@ -22,6 +22,53 @@ function jsonError(string $msg, int $code = 400): never
     exit;
 }
 
+function isValidHttpUrl(string $value): bool
+{
+    return (bool) filter_var($value, FILTER_VALIDATE_URL)
+        && (stripos($value, 'http://') === 0 || stripos($value, 'https://') === 0);
+}
+
+function normalizeTiktokUser(string $query): string
+{
+    $q = trim($query);
+    $q = preg_replace('~^https?://(?:www\.)?tiktok\.com/@~i', '', $q);
+    $q = preg_replace('~[/?#].*$~', '', $q);
+    $q = ltrim((string) $q, '@');
+    $q = preg_replace('/[^a-zA-Z0-9._]/', '', (string) $q);
+    return (string) $q;
+}
+
+function normalizeResultUrl(array $entry, string $platform): ?string
+{
+    $id  = (string) ($entry['id'] ?? '');
+    $url = (string) ($entry['webpage_url'] ?? $entry['url'] ?? '');
+
+    if (isValidHttpUrl($url)) {
+        return $url;
+    }
+
+    if ($platform === 'youtube' && $id !== '') {
+        return 'https://www.youtube.com/watch?v=' . rawurlencode($id);
+    }
+
+    if ($platform === 'tiktok') {
+        $uploader = (string) ($entry['uploader'] ?? $entry['channel'] ?? '');
+        $uploader = ltrim($uploader, '@');
+        if ($uploader !== '' && $id !== '') {
+            return 'https://www.tiktok.com/@' . rawurlencode($uploader) . '/video/' . rawurlencode($id);
+        }
+    }
+
+    if ($platform === 'soundcloud') {
+        $uploader = (string) ($entry['uploader'] ?? $entry['channel'] ?? '');
+        if ($uploader !== '' && $id !== '' && strpos($id, 'http') !== 0) {
+            return 'https://soundcloud.com/' . rawurlencode($uploader) . '/' . rawurlencode($id);
+        }
+    }
+
+    return null;
+}
+
 // ---- Input -------------------------------------------------------------- //
 
 $query    = isset($_GET['q'])        ? trim($_GET['q'])        : '';
@@ -34,9 +81,19 @@ if ($query === '' || mb_strlen($query) > 200) {
 }
 
 $page     = max(1, $page);
-$platform = in_array($platform, ['youtube', 'soundcloud'], true) ? $platform : 'youtube';
+$platform = in_array($platform, ['youtube', 'soundcloud', 'tiktok'], true) ? $platform : 'youtube';
 
-$searchPrefix = $platform === 'soundcloud' ? 'scsearch30:' : 'ytsearch30:';
+if ($platform === 'soundcloud') {
+    $searchTarget = 'scsearch30:' . $query;
+} elseif ($platform === 'tiktok') {
+    $user = normalizeTiktokUser($query);
+    if ($user === '') {
+        jsonError('Para TikTok, digite um usuário válido (ex.: @charlidamelio).', 422);
+    }
+    $searchTarget = 'tiktokuser:' . $user;
+} else {
+    $searchTarget = 'ytsearch30:' . $query;
+}
 
 // ---- Session Cache Key -------------------------------------------------- //
 
@@ -47,8 +104,8 @@ $cacheKey = 'search_' . md5(mb_strtolower($query) . '_' . $platform);
 if (!isset($_SESSION[$cacheKey])) {
 
     // Fetch up to 30 results so pages 1-3 work without re-querying
-    $escapedQuery = escapeshellarg($searchPrefix . $query);
-    $cmd          = "yt-dlp {$escapedQuery} --flat-playlist --dump-single-json --no-download 2>&1";
+    $escapedQuery = escapeshellarg($searchTarget);
+    $cmd          = "yt-dlp {$escapedQuery} --flat-playlist --playlist-end 30 --dump-single-json --no-download 2>&1";
 
     exec($cmd, $outputLines, $returnCode);
 
@@ -82,16 +139,20 @@ if (!isset($_SESSION[$cacheKey])) {
         if (empty($entry['id'])) {
             continue;
         }
-        $id = $entry['id'];
+        $id  = (string) $entry['id'];
+        $url = normalizeResultUrl($entry, $platform);
+        if ($url === null) {
+            continue;
+        }
 
         $entries[] = [
             'id'        => $id,
             'title'     => $entry['title']       ?? 'Sem título',
-            'url'       => $entry['webpage_url'] ?? $entry['url'] ?? "https://www.youtube.com/watch?v={$id}",
+            'url'       => $url,
             'thumbnail' => $entry['thumbnail']   ?? ($platform === 'youtube' ? "https://i.ytimg.com/vi/{$id}/mqdefault.jpg" : ''),
             'duration'  => isset($entry['duration']) ? (int) $entry['duration'] : 0,
             'uploader'  => $entry['uploader']    ?? $entry['channel'] ?? '',
-            'platform'  => $platform === 'soundcloud' ? 'SoundCloud' : 'YouTube',
+            'platform'  => $platform === 'soundcloud' ? 'SoundCloud' : ($platform === 'tiktok' ? 'TikTok' : 'YouTube'),
         ];
     }
 

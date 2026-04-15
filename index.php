@@ -78,6 +78,7 @@ $langs = [
         'srch_err'    => 'Erro ao buscar. Verifique se yt-dlp está instalado.',
         'page_info'   => 'Página %d de %d',
         'timeout_e'   => "O download está demorando mais que o esperado.\nVerifique se a URL é válida e tente novamente.",
+        'cookie_hint' => 'YouTube: o servidor tenta cookies automaticamente para contornar bloqueios anti-bot. Se ainda falhar, pode ser limitação temporária do próprio YouTube.',
         'app_name'    => 'OmniDownloader',
         'app_desc_ld' => 'Baixe vídeos em MP4 e músicas em MP3 do YouTube, TikTok, Instagram, Twitter, Facebook e mais de 1000 plataformas.',
         'features'    => ['Download de vídeos do YouTube em MP4','Download de músicas do YouTube em MP3','Download de vídeos do TikTok','Download de vídeos do Instagram','Suporte a mais de 1000 plataformas','Sem necessidade de cadastro','Interface responsiva para celular'],
@@ -142,6 +143,7 @@ $langs = [
         'srch_err'    => 'Search error. Check if yt-dlp is installed.',
         'page_info'   => 'Page %d of %d',
         'timeout_e'   => "Download is taking longer than expected.\nCheck if the URL is valid and try again.",
+        'cookie_hint' => 'YouTube: the server automatically tries browser cookies to bypass anti-bot checks. If it still fails, this may be a temporary YouTube limitation.',
         'app_name'    => 'OmniDownloader',
         'app_desc_ld' => 'Download MP4 videos and MP3 music from YouTube, TikTok, Instagram, Twitter, Facebook and 1000+ platforms. Free, fast, no installation needed.',
         'features'    => ['YouTube video download in MP4','YouTube music download in MP3','TikTok video download','Instagram video download','1000+ platform support','No sign-up required','Responsive mobile interface'],
@@ -206,6 +208,7 @@ $langs = [
         'srch_err'    => 'Error de búsqueda. Verifica si yt-dlp está instalado.',
         'page_info'   => 'Página %d de %d',
         'timeout_e'   => "La descarga está tardando más de lo esperado.\nVerifica si la URL es válida e inténtalo de nuevo.",
+        'cookie_hint' => 'YouTube: el servidor intenta cookies automáticamente para evitar bloqueos anti-bot. Si aún falla, puede ser una limitación temporal de YouTube.',
         'app_name'    => 'OmniDownloader',
         'app_desc_ld' => 'Descarga vídeos en MP4 y música en MP3 de YouTube, TikTok, Instagram, Twitter, Facebook y más de 1000 plataformas. Gratis, rápido y sin instalación.',
         'features'    => ['Descarga de vídeos de YouTube en MP4','Descarga de música de YouTube en MP3','Descarga de vídeos de TikTok','Descarga de vídeos de Instagram','Soporte de más de 1000 plataformas','Sin registro requerido','Interfaz responsiva para móvil'],
@@ -270,6 +273,7 @@ $langs = [
         'srch_err'    => '検索エラー。yt-dlpがインストールされているか確認してください。',
         'page_info'   => '%d / %d ページ',
         'timeout_e'   => "ダウンロードに予想以上の時間がかかっています。\nURLが有効か確認して、もう一度お試しください。",
+        'cookie_hint' => 'YouTube: サーバー側でCookieを自動的に試行して anti-bot を回避します。失敗する場合は、YouTube側の一時的な制限の可能性があります。',
         'app_name'    => 'OmniDownloader',
         'app_desc_ld' => 'YouTube、TikTok、Instagram、Twitter、Facebookなど1000以上のプラットフォームからMP4動画・MP3音楽を無料でダウンロード。',
         'features'    => ['YouTubeのMP4動画ダウンロード','YouTubeのMP3音楽ダウンロード','TikTok動画ダウンロード','Instagram動画ダウンロード','1000以上のプラットフォーム対応','登録不要','レスポンシブなモバイルインターフェース'],
@@ -319,6 +323,8 @@ function he(string $s): string {
     <meta name="description" content="<?= he($t['meta_desc']) ?>">
     <meta name="keywords"    content="<?= he($t['meta_kw']) ?>">
     <meta name="author"      content="Andre Silva">
+    <meta name="application-name" content="OmniDownloader">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="robots"      content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
     <meta name="theme-color" content="#0D47A1">
     <link rel="canonical"    href="<?= he($canonical) ?>">
@@ -336,6 +342,7 @@ function he(string $s): string {
     <meta property="og:title"       content="<?= he($t['og_title']) ?>">
     <meta property="og:description" content="<?= he($t['og_desc']) ?>">
     <meta property="og:image"       content="<?= he($ogImage) ?>">
+    <meta property="og:image:type"   content="image/png">
     <meta property="og:image:width"  content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:image:alt"    content="<?= he($t['og_title']) ?>">
@@ -347,6 +354,7 @@ function he(string $s): string {
     <meta name="twitter:title"       content="<?= he($t['og_title']) ?>">
     <meta name="twitter:description" content="<?= he($t['og_desc']) ?>">
     <meta name="twitter:image"       content="<?= he($ogImage) ?>">
+    <meta name="twitter:site"        content="@andretsc">
     <meta name="twitter:creator"     content="@andretsc">
 
     <!-- ===== JSON-LD: WebApplication ===== -->
@@ -368,6 +376,22 @@ function he(string $s): string {
         "offers": {"@type":"Offer","price":"0","priceCurrency":"BRL"},
         "featureList": <?= $featuresJson ?>,
         "author": {"@type":"Person","name":"Andre Silva","url":"https://andretsc.dev"}
+    }
+    </script>
+
+    <!-- ===== JSON-LD: WebSite ===== -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "OmniDownloader",
+        "url": <?= json_encode($siteUrl, JSON_UNESCAPED_UNICODE) ?>,
+        "inLanguage": <?= json_encode($t['lang_attr'], JSON_UNESCAPED_UNICODE) ?>,
+        "potentialAction": {
+            "@type": "SearchAction",
+            "target": <?= json_encode($siteUrl . '/?q={search_term_string}', JSON_UNESCAPED_UNICODE) ?>,
+            "query-input": "required name=search_term_string"
+        }
     }
     </script>
 
@@ -494,6 +518,9 @@ function he(string $s): string {
                             <div class="search-platform-bar">
                                 <button type="button" class="btn-platform active" data-platform="youtube">
                                     <span class="platform-dot" style="background:#FF0000"></span>YouTube
+                                </button>
+                                <button type="button" class="btn-platform" data-platform="tiktok">
+                                    <span class="platform-dot" style="background:#010101"></span>TikTok
                                 </button>
                                 <button type="button" class="btn-platform" data-platform="soundcloud">
                                     <span class="platform-dot" style="background:#FF5500"></span>SoundCloud
@@ -651,6 +678,9 @@ function he(string $s): string {
                     &middot; <?= he($t['footer_copy']) ?>
                 </p>
                 <p class="footer-disclaimer"><?= he($t['footer_disc']) ?></p>
+                <p id="cookieNotice" class="cookie-notice hidden" aria-live="polite">
+                    <?= he($t['cookie_hint']) ?>
+                </p>
             </div>
         </footer>
 

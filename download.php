@@ -36,6 +36,58 @@ function cleanup(string $dir): void
     @rmdir($dir);
 }
 
+function isYoutubeUrl(string $url): bool
+{
+    $u = strtolower($url);
+    return str_contains($u, 'youtube.com') || str_contains($u, 'youtu.be');
+}
+
+function buildCommand(array $args): string
+{
+    return implode(' ', array_map('escapeshellarg', $args));
+}
+
+function getConfiguredCookieArgs(): array
+{
+    $cookiesFromBrowser = trim((string) getenv('YTDLP_COOKIES_FROM_BROWSER'));
+    if ($cookiesFromBrowser !== '') {
+        return ['--cookies-from-browser', $cookiesFromBrowser];
+    }
+
+    $cookieFileEnv = trim((string) getenv('YTDLP_COOKIES_FILE'));
+    if ($cookieFileEnv !== '' && is_file($cookieFileEnv)) {
+        return ['--cookies', $cookieFileEnv];
+    }
+
+    $localCookieFile = __DIR__ . DIRECTORY_SEPARATOR . 'cookies.txt';
+    if (is_file($localCookieFile)) {
+        return ['--cookies', $localCookieFile];
+    }
+
+    return [];
+}
+
+function getAutomaticBrowserCookieArgSets(): array
+{
+    return [
+        ['--cookies-from-browser', 'chrome'],
+        ['--cookies-from-browser', 'edge'],
+        ['--cookies-from-browser', 'firefox'],
+        ['--cookies-from-browser', 'brave'],
+    ];
+}
+
+function isAntiBotOutput(array $outputLines): bool
+{
+    $detail = mb_strtolower(implode(' ', array_slice($outputLines, -12)));
+    $detail = str_replace(["’", "\u{2019}"], "'", $detail);
+
+    return str_contains($detail, "sign in to confirm you're not a bot")
+        || str_contains($detail, 'please sign in')
+        || str_contains($detail, 'use --cookies-from-browser')
+        || str_contains($detail, 'use --cookies for the authentication');
+}
+
 function isSafeUrl(string $url): bool
 {
     $host = parse_url($url, PHP_URL_HOST);
@@ -83,27 +135,99 @@ if (!mkdir($tmpDir, 0755, true)) {
 
 // ---- Build yt-dlp Command ----------------------------------------------- //
 
-$outputTemplate = escapeshellarg($tmpDir . DIRECTORY_SEPARATOR . '%(title).80s.%(ext)s');
-$escapedUrl     = escapeshellarg($url);
+$baseArgs = [
+    'yt-dlp',
+    '--no-playlist',
+    '--no-warnings',
+    '--newline',
+    '--socket-timeout', '20',
+    '--retries', '4',
+    '--fragment-retries', '4',
+    '--extractor-retries', '2',
+    '--output', $tmpDir . DIRECTORY_SEPARATOR . '%(title).80s.%(ext)s',
+];
+
+if (isYoutubeUrl($url)) {
+    $baseArgs[] = '--extractor-args';
+    $baseArgs[] = 'youtube:player_client=android,web';
+}
 
 if ($format === 'mp3') {
-    $cmd = "yt-dlp --no-playlist -x --audio-format mp3 --audio-quality 192K"
-         . " -o {$outputTemplate} {$escapedUrl} 2>&1";
+    $baseArgs[] = '-x';
+    $baseArgs[] = '--audio-format';
+    $baseArgs[] = 'mp3';
+    $baseArgs[] = '--audio-quality';
+    $baseArgs[] = '192K';
 } else {
-    $cmd = "yt-dlp --no-playlist"
-         . " -f \"bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best\""
-         . " --merge-output-format mp4"
-         . " -o {$outputTemplate} {$escapedUrl} 2>&1";
+    $baseArgs[] = '-f';
+    $baseArgs[] = 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best';
+    $baseArgs[] = '--merge-output-format';
+    $baseArgs[] = 'mp4';
 }
+
+$baseArgs[] = $url;
+
+$cmd = buildCommand($baseArgs) . ' 2>&1';
 
 // ---- Execute yt-dlp ----------------------------------------------------- //
 
-exec($cmd, $outputLines, $returnCode);
+$isYoutube = isYoutubeUrl($url);
+$attempts = [$baseArgs];
+
+if ($isYoutube) {
+    $configuredCookieArgs = getConfiguredCookieArgs();
+    if (!empty($configuredCookieArgs)) {
+        $attempts[] = array_merge($baseArgs, $configuredCookieArgs);
+    }
+    foreach (getAutomaticBrowserCookieArgSets() as $cookieArgSet) {
+        $attempts[] = array_merge($baseArgs, $cookieArgSet);
+    }
+}
+
+$outputLines = [];
+$returnCode = 1;
+$lastDetail = '';
+
+foreach ($attempts as $attemptArgs) {
+    $attemptOutput = [];
+    $attemptCode = 1;
+    exec(buildCommand($attemptArgs) . ' 2>&1', $attemptOutput, $attemptCode);
+
+    $outputLines = $attemptOutput;
+    $returnCode = $attemptCode;
+    $lastDetail = trim(implode(' ', array_slice($attemptOutput, -5)));
+
+    if ($attemptCode === 0) {
+        break;
+    }
+
+    if (!$isYoutube || !isAntiBotOutput($attemptOutput)) {
+        break;
+    }
+}
 
 if ($returnCode !== 0) {
     cleanup($tmpDir);
-    $detail = implode(' ', array_slice($outputLines, -3));
-    sendError("Não foi possível processar o download. Verifique se a URL é válida.\n\nDetalhe: {$detail}", 422);
+    $detail = trim(implode(' ', array_slice($outputLines, -5)));
+    if ($detail === '' && $lastDetail !== '') {
+        $detail = $lastDetail;
+    }
+    $normalizedDetail = str_replace(["’", "\u{2019}"], "'", mb_strtolower($detail));
+
+    if (str_contains($normalizedDetail, "sign in to confirm you're not a bot")) {
+        sendError(
+            "O YouTube está exigindo verificação anti-bot para este vídeo.\n"
+            . "O servidor já tentou ativar cookies automaticamente (Chrome/Edge/Firefox/Brave), mas não conseguiu autenticar.\n\n"
+            . "Detalhe técnico: {$detail}",
+            429
+        );
+    }
+
+    if ($detail === '') {
+        $detail = 'Falha desconhecida do yt-dlp.';
+    }
+
+    sendError("Não foi possível processar o download desta mídia.\n\nDetalhe: {$detail}", 422);
 }
 
 // ---- Locate Output File ------------------------------------------------- //

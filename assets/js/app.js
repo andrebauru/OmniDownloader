@@ -39,6 +39,7 @@ const counterEl       = document.getElementById('downloadCount');
 const progressFill    = document.getElementById('progressFill');
 const progressPct     = document.getElementById('progressPct');
 const loadingStage    = document.getElementById('loadingStage');
+const cookieNotice    = document.getElementById('cookieNotice');
 
 // ---- State ------------------------------------------------------------- //
 
@@ -56,6 +57,10 @@ let searchPlatform = 'youtube';
 let mode           = 'idle'; // 'idle' | 'url' | 'search'
 let progressCurrent = 0;
 let activePreviewId = null; // currently open audio preview
+
+function canRenderAudioPreview(platform) {
+    return platform === 'YouTube' || platform === 'SoundCloud';
+}
 
 // ---- Platform Detection ------------------------------------------------- //
 
@@ -146,9 +151,36 @@ function stopPolling() {
     timeoutHandle = null;
 }
 
+function showCookieNotice() {
+    if (!cookieNotice) return;
+    cookieNotice.classList.remove('hidden');
+}
+
+function hideCookieNotice() {
+    if (!cookieNotice) return;
+    cookieNotice.classList.add('hidden');
+}
+
+function isYoutubeUrlInput(text) {
+    const u = String(text || '').toLowerCase();
+    return u.includes('youtube.com') || u.includes('youtu.be');
+}
+
+function isCookieRelatedBlock(msg) {
+    const s = String(msg || '').toLowerCase();
+    return s.includes('anti-bot')
+        || s.includes("you're not a bot")
+        || s.includes('cookies-from-browser')
+        || s.includes('cookies.txt')
+        || s.includes('--cookies');
+}
+
 // ---- Audio Preview ------------------------------------------------------ //
 
 function closeAudioPreview() {
+    document.querySelectorAll('.audio-preview-box iframe').forEach(frame => {
+        try { frame.src = 'about:blank'; } catch { /* ignore */ }
+    });
     document.querySelectorAll('.audio-preview-box').forEach(el => el.remove());
     document.querySelectorAll('.btn-audio-preview.active').forEach(el => el.classList.remove('active'));
     activePreviewId = null;
@@ -166,16 +198,24 @@ function toggleAudioPreview(id, platform, el) {
     const box = document.createElement('div');
     box.className = 'audio-preview-box';
 
+    if (!canRenderAudioPreview(platform)) {
+        activePreviewId = null;
+        el.classList.remove('active');
+        return;
+    }
+
     if (platform === 'SoundCloud') {
         const scUrl = encodeURIComponent(`https://soundcloud.com/${id}`);
         box.innerHTML = `
+            <button type="button" class="btn-close-preview" aria-label="Fechar preview">×</button>
             <iframe scrolling="no" frameborder="no" allow="autoplay"
-                src="https://w.soundcloud.com/player/?url=${scUrl}&color=%231565C0&auto_play=true&show_artwork=false&show_user=false&buying=false&liking=false&sharing=false&download=false">
+                src="https://w.soundcloud.com/player/?url=${scUrl}&color=%231565C0&auto_play=false&show_artwork=false&show_user=false&buying=false&liking=false&sharing=false&download=false">
             </iframe>`;
     } else {
         // YouTube
         box.innerHTML = `
-            <iframe src="https://www.youtube.com/embed/${encodeURIComponent(id)}?autoplay=1&controls=1&modestbranding=1&rel=0"
+            <button type="button" class="btn-close-preview" aria-label="Fechar preview">×</button>
+            <iframe src="https://www.youtube.com/embed/${encodeURIComponent(id)}?autoplay=0&controls=1&modestbranding=1&rel=0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowfullscreen frameborder="0" loading="lazy">
             </iframe>`;
@@ -183,6 +223,7 @@ function toggleAudioPreview(id, platform, el) {
 
     const resultItem = el.closest('.result-item');
     resultItem.after(box);
+    box.querySelector('.btn-close-preview')?.addEventListener('click', closeAudioPreview);
     box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
@@ -248,6 +289,7 @@ function stopProgressBar() {
 function setMode(newMode) {
     mode = newMode;
     const isSearch = (newMode === 'search');
+    if (!isSearch) closeAudioPreview();
     searchSection.classList.toggle('hidden', !isSearch);
     downloadSection.classList.toggle('hidden', isSearch);
     if (newMode !== 'url') videoPreview.classList.add('hidden');
@@ -295,6 +337,9 @@ urlInput.addEventListener('input', () => {
 
     if (!val) { resetToIdle(); return; }
 
+    if (isYoutubeUrlInput(val)) showCookieNotice();
+    else hideCookieNotice();
+
     if (isUrl(val)) {
         setMode('url');
         infoTimer = setTimeout(() => fetchVideoInfo(val), 700);
@@ -310,6 +355,8 @@ clearBtn.addEventListener('click', () => {
     clearTimeout(infoTimer);
     clearTimeout(searchTimer);
     resetToIdle();
+    closeAudioPreview();
+    hideCookieNotice();
     urlInput.focus();
 });
 
@@ -430,6 +477,7 @@ function renderResults(results) {
                 ${item.platform ? `<span class="result-platform" data-platform="${escapeHtml(item.platform)}">${escapeHtml(item.platform)}</span>` : ''}
             </div>
             <div class="result-actions">
+                ${canRenderAudioPreview(item.platform || '') ? `
                 <button type="button" class="btn-audio-preview" title="Preview"
                         data-id="${escapeHtml(item.id || '')}"
                         data-platform="${escapeHtml(item.platform || '')}">
@@ -437,7 +485,7 @@ function renderResults(results) {
                          fill="currentColor" aria-hidden="true">
                         <polygon points="5 3 19 12 5 21 5 3"/>
                     </svg>
-                </button>
+                </button>` : ''}
                 <button type="button" class="btn-select" data-action="select">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
                          fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
@@ -457,12 +505,15 @@ function renderResults(results) {
             selectResult(el);
         });
         // Audio preview button
-        el.querySelector('.btn-audio-preview').addEventListener('click', ev => {
-            ev.stopPropagation();
-            const id       = ev.currentTarget.dataset.id;
-            const platform = ev.currentTarget.dataset.platform;
-            toggleAudioPreview(id, platform, ev.currentTarget);
-        });
+        const previewBtn = el.querySelector('.btn-audio-preview');
+        if (previewBtn) {
+            previewBtn.addEventListener('click', ev => {
+                ev.stopPropagation();
+                const id       = ev.currentTarget.dataset.id;
+                const platform = ev.currentTarget.dataset.platform;
+                toggleAudioPreview(id, platform, ev.currentTarget);
+            });
+        }
         // Click on row (excluding buttons) = select
         el.addEventListener('click', () => selectResult(el));
         el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') selectResult(el); });
@@ -518,6 +569,7 @@ downloadForm.addEventListener('submit', e => {
         return;
     }
     deleteCookie('fileDownloadToken');
+    closeAudioPreview();
     showLoading();
 
     pollInterval = setInterval(() => {
@@ -543,12 +595,23 @@ downloadFrame.addEventListener('load', () => {
         const bodyText = doc.body ? doc.body.innerText.trim() : '';
         if (bodyText && bodyText.length < 1000) {
             stopPolling();
+            if (isCookieRelatedBlock(bodyText)) {
+                showForm();
+                showCookieNotice();
+                return;
+            }
             showError(bodyText);
         }
     } catch { /* cross-origin */ }
 });
 
 tryAgainBtn.addEventListener('click', () => { showForm(); urlInput.focus(); });
+
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) closeAudioPreview();
+});
+
+window.addEventListener('beforeunload', closeAudioPreview);
 
 // ---- Download Counter --------------------------------------------------- //
 
