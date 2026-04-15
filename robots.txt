@@ -1,10 +1,32 @@
 User-agent: *
 Allow: /
+Allow: /assets/
 Disallow: /download.php
 Disallow: /api.php
 Disallow: /search.php
 Disallow: /stats.php
-Disallow: /data/
 Disallow: /includes/
+Disallow: /build/
+Disallow: /ffmpeg_bin/
 
-Sitemap: https://omnidownloader.andretsc.dev/sitemap.xml
+# Taxa de crawl para Googlebot (sem limite)
+User-agent: Googlebot
+Crawl-delay: 0
+
+# Taxa de crawl para Bingbot
+User-agent: Bingbot
+Crawl-delay: 1
+
+# Taxa de crawl para outros bots
+User-agent: *
+Crawl-delay: 1
+
+# Bloquear bots maliciosos/spammers
+User-agent: MJ12bot
+User-agent: SemrushBot
+User-agent: DotBot
+User-agent: AhrefsBot
+Disallow: /
+
+# Sitemap (atualizado para sitemap.php)
+Sitemap: https://omnidownloader.andretsc.dev/sitemap.php

@@ -331,8 +331,9 @@ function he(string $s): string {
 
     <!-- ===== Favicon & Icons ===== -->
     <link rel="icon" type="image/png" href="assets/img/favicon.png" sizes="32x32">
-    <link rel="icon" type="image/png" href="assets/img/favicon.png">
-    <link rel="apple-touch-icon" href="assets/img/favicon.png">
+    <link rel="icon" type="image/png" href="assets/img/favicon-192.png" sizes="192x192">
+    <link rel="icon" type="image/png" href="assets/img/favicon-512.png" sizes="512x512">
+    <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
     <link rel="shortcut icon" type="image/png" href="assets/img/favicon.png">
     <link rel="manifest" href="manifest.json">>
 
@@ -422,6 +423,40 @@ function he(string $s): string {
     }
     </script>
 
+    <!-- ===== JSON-LD: BreadcrumbList ===== -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": <?= json_encode($siteUrl . '/', JSON_UNESCAPED_UNICODE) ?>
+            },
+            {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Download",
+                "item": <?= json_encode($siteUrl . '/#download', JSON_UNESCAPED_UNICODE) ?>
+            },
+            {
+                "@type": "ListItem",
+                "position": 3,
+                "name": "Search",
+                "item": <?= json_encode($siteUrl . '/#search', JSON_UNESCAPED_UNICODE) ?>
+            },
+            {
+                "@type": "ListItem",
+                "position": 4,
+                "name": "FAQ",
+                "item": <?= json_encode($siteUrl . '/#faq', JSON_UNESCAPED_UNICODE) ?>
+            }
+        ]
+    }
+    </script>
+
     <!-- ===== JSON-LD: Organization ===== -->
     <script type="application/ld+json">
     {
@@ -447,6 +482,34 @@ function he(string $s): string {
     <link rel="dns-prefetch" href="https://i.ytimg.com">
     <link rel="preload" href="assets/css/style.css" as="style">
     <link rel="preload" href="assets/js/app.js"     as="script">
+
+    <!-- ===== Google Analytics 4 ===== -->
+    <!-- Replace YOUR_GA_ID with your actual Google Analytics 4 Measurement ID -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=YOUR_GA_ID"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'YOUR_GA_ID', {
+        'page_path': window.location.pathname,
+        'page_title': document.title
+    });
+    // Track custom events
+    function trackDownload(platform, format) {
+        gtag('event', 'download', {
+            'event_category': 'engagement',
+            'event_label': platform + '_' + format,
+            'value': 1
+        });
+    }
+    function trackSearch(query, platform) {
+        gtag('event', 'search', {
+            'event_category': 'engagement',
+            'search_term': query,
+            'platform': platform
+        });
+    }
+    </script>
 
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
