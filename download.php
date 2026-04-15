@@ -85,7 +85,9 @@ function isAntiBotOutput(array $outputLines): bool
     return str_contains($detail, "sign in to confirm you're not a bot")
         || str_contains($detail, 'please sign in')
         || str_contains($detail, 'use --cookies-from-browser')
-        || str_contains($detail, 'use --cookies for the authentication');
+        || str_contains($detail, 'use --cookies for the authentication')
+        || str_contains($detail, 'could not find')
+        || str_contains($detail, 'cookies database');
 }
 
 function isSafeUrl(string $url): bool
