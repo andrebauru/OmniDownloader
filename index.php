@@ -329,6 +329,13 @@ function he(string $s): string {
     <meta name="theme-color" content="#0D47A1">
     <link rel="canonical"    href="<?= he($canonical) ?>">
 
+    <!-- ===== Favicon & Icons ===== -->
+    <link rel="icon" type="image/png" href="assets/img/favicon.png" sizes="32x32">
+    <link rel="icon" type="image/png" href="assets/img/favicon.png">
+    <link rel="apple-touch-icon" href="assets/img/favicon.png">
+    <link rel="shortcut icon" type="image/png" href="assets/img/favicon.png">
+    <link rel="manifest" href="manifest.json">>
+
     <!-- ===== hreflang — one URL per language ===== -->
     <link rel="alternate" hreflang="pt"      href="<?= he($siteUrl) ?>/">
     <link rel="alternate" hreflang="en"      href="<?= he($siteUrl) ?>/?lang=en">
@@ -348,6 +355,15 @@ function he(string $s): string {
     <meta property="og:image:alt"    content="<?= he($t['og_title']) ?>">
     <meta property="og:locale"       content="<?= he($t['og_locale']) ?>">
     <meta property="og:site_name"    content="OmniDownloader">
+
+    <!-- ===== Additional SEO: Google & Bing ===== -->
+    <meta name="google-site-verification" content="">
+    <meta name="msvalidate.01" content="">
+    <meta name="revisit-after" content="7 days">
+    <meta name="distribution" content="global">
+    <meta name="rating" content="general">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
 
     <!-- ===== Twitter Card ===== -->
     <meta name="twitter:card"        content="summary_large_image">
@@ -403,6 +419,26 @@ function he(string $s): string {
         "mainEntity": [
         <?= $faqLdItems ?>
         ]
+    }
+    </script>
+
+    <!-- ===== JSON-LD: Organization ===== -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "OmniDownloader",
+        "url": <?= json_encode($siteUrl, JSON_UNESCAPED_UNICODE) ?>,
+        "logo": <?= json_encode($siteUrl . '/assets/img/favicon.png', JSON_UNESCAPED_UNICODE) ?>,
+        "description": "Uma aplicação web para baixar vídeos e áudio de YouTube, TikTok, Instagram e 1000+ plataformas",
+        "sameAs": [
+            "https://github.com/andrebauru/OmniDownloader"
+        ],
+        "contactPoint": {
+            "@type": "ContactPoint",
+            "contactType": "Technical Support",
+            "url": "https://github.com/andrebauru/OmniDownloader/issues"
+        }
     }
     </script>
 

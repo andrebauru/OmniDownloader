@@ -1,0 +1,33 @@
+{
+  "name": "OmniDownloader",
+  "short_name": "OmniDownloader",
+  "description": "Baixe vídeos em MP4 e músicas em MP3 do YouTube, TikTok, Instagram e 1000+ plataformas",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#0D47A1",
+  "background_color": "#FFFFFF",
+  "icons": [
+    {
+      "src": "assets/img/favicon.png",
+      "sizes": "32x32",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/img/favicon.png",
+      "sizes": "32x32",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "screenshots": [
+    {
+      "src": "assets/img/og-image.png",
+      "sizes": "1200x630",
+      "type": "image/png"
+    }
+  ]
+}
