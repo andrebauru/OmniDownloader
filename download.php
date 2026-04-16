@@ -71,69 +71,53 @@ function detectInstalledBrowsers(): array
 {
     /**
      * Detecta quais navegadores estão instalados no sistema
-     * de forma robusta, tentando vários caminhos conhecidos.
+     * testando cada um individualmente com yt-dlp.
      */
-    $browsers = [];
-    $paths = [
-        'chrome' => [
-            'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-            'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-        ],
-        'edge' => [
-            'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
-            'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
-        ],
-        'firefox' => [
-            'C:\\Program Files\\Mozilla Firefox\\firefox.exe',
-            'C:\\Program Files (x86)\\Mozilla Firefox\\firefox.exe',
-        ],
-        'brave' => [
-            'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe',
-            'C:\\Program Files (x86)\\BraveSoftware\\Brave-Browser\\Application\\brave.exe',
-        ],
-    ];
+    $browsers = ['chrome', 'firefox', 'edge', 'brave'];
+    $availableBrowsers = [];
 
-    // Se não é Windows, tentar com comandos do sistema
-    if (PHP_OS_FAMILY !== 'Windows') {
-        $browserNames = ['chrome', 'firefox', 'edge', 'brave'];
-        foreach ($browserNames as $name) {
-            exec("which $name 2>/dev/null", $output, $returnCode);
-            if ($returnCode === 0) {
-                $browsers[] = $name;
-            }
-        }
-        return $browsers;
-    }
+    foreach ($browsers as $browser) {
+        // Teste simples: tenta usar --cookies-from-browser com cada navegador
+        // Se falhar com "could not find", o navegador não está disponível
+        $testCmd = 'yt-dlp --cookies-from-browser ' . escapeshellarg($browser) . ' --version 2>&1';
+        exec($testCmd, $output, $returnCode);
+        $output = implode(' ', $output);
 
-    // No Windows, verificar caminhos conhecidos
-    foreach ($paths as $browserName => $possiblePaths) {
-        foreach ($possiblePaths as $path) {
-            if (file_exists($path)) {
-                $browsers[] = $browserName;
-                break;
-            }
+        // Se conseguiu executar ou falhou por outro motivo (não "could not find"), considera disponível
+        if (strpos($output, 'could not find') === false) {
+            $availableBrowsers[] = $browser;
         }
     }
 
-    return $browsers;
+    // Se nenhum navegador foi detectado, retorna lista padrão
+    if (empty($availableBrowsers)) {
+        return ['chrome', 'firefox', 'edge'];
+    }
+
+    return $availableBrowsers;
 }
 
 function getAutomaticBrowserCookieArgSets(): array
 {
     $installedBrowsers = detectInstalledBrowsers();
     
+    // Remover Brave se houver erro de detecção para evitar falhas posteriores
+    $installedBrowsers = array_filter(
+        $installedBrowsers,
+        fn($b) => $b !== 'brave' || isValidBravePath()
+    );
+
     if (empty($installedBrowsers)) {
-        // Fallback: tentar os navegadores mais comuns mesmo se não detectados
+        // Fallback: tentar os navegadores mais comuns
         return [
             ['--cookies-from-browser', 'chrome'],
-            ['--cookies-from-browser', 'edge'],
             ['--cookies-from-browser', 'firefox'],
-            ['--cookies-from-browser', 'brave'],
+            ['--cookies-from-browser', 'edge'],
         ];
     }
 
     // Priorizar navegadores mais comuns (nesta ordem)
-    $priority = ['chrome', 'edge', 'firefox', 'brave'];
+    $priority = ['chrome', 'firefox', 'edge', 'brave'];
     $orderedBrowsers = [];
     
     foreach ($priority as $browser) {
@@ -146,6 +130,40 @@ function getAutomaticBrowserCookieArgSets(): array
         fn($browser) => ['--cookies-from-browser', $browser],
         $orderedBrowsers
     );
+}
+
+function isValidBravePath(): bool
+{
+    /**
+     * Verifica se o Brave está em um caminho acessível.
+     * Evita tentar usar Brave se estiver em um caminho inválido.
+     */
+    if (PHP_OS_FAMILY === 'Windows') {
+        $paths = [
+            'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe',
+            'C:\\Program Files (x86)\\BraveSoftware\\Brave-Browser\\Application\\brave.exe',
+        ];
+        foreach ($paths as $path) {
+            if (file_exists($path)) {
+                return true;
+            }
+        }
+    } else {
+        // No Linux/Mac, tentar encontrar Brave em /opt ou /usr/bin
+        $paths = [
+            '/opt/brave.com/brave/brave',
+            '/usr/bin/brave',
+            '/usr/bin/brave-browser',
+            '/snap/bin/brave',
+        ];
+        foreach ($paths as $path) {
+            if (file_exists($path) && is_executable($path)) {
+                return true;
+            }
+        }
+    }
+    
+    return false;
 }
 
 function isAntiBotOutput(array $outputLines): bool
@@ -276,6 +294,14 @@ foreach ($attempts as $attemptArgs) {
 
     if ($attemptCode === 0) {
         break;
+    }
+
+    // Detectar se o erro é por Brave não encontrado - pular para próxima tentativa
+    $outputText = implode(' ', $attemptOutput);
+    if (stripos($outputText, 'could not find brave') !== false || 
+        stripos($outputText, 'brave') !== false && stripos($outputText, 'database') !== false) {
+        // Skip this attempt and try next
+        continue;
     }
 
     // For these platforms, always try next attempt if current failed
