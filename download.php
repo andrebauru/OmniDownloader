@@ -69,27 +69,14 @@ function getConfiguredCookieArgs(): array
 
 function canAccessBrowserCookies(): bool
 {
-    /**
-     * Verifica se podemos acessar cookies de navegadores.
-     * Em servidores web (www-data user), geralmente não podemos.
-     * 
-     * Retorna false se:
-     * - Estamos rodando como www-data (servidor web)
-     * - Estamos em um diretório /var/www (típico de servidor)
-     * - Não conseguimos escrever em diretórios de navegador
-     */
-    
-    // Se não é Windows, verificar se é um servidor web
     if (PHP_OS_FAMILY !== 'Windows') {
         $currentUser = trim(shell_exec('whoami') ?? '');
         $scriptDir = __DIR__;
         
-        // Servidores web típicos usam www-data ou similar
         if (in_array($currentUser, ['www-data', 'www', 'httpd', 'apache', 'nginx', '_www', 'nobody'], true)) {
             return false;
         }
         
-        // Se estamos em /var/www, é provavelmente um servidor
         if (strpos($scriptDir, '/var/www') === 0 || strpos($scriptDir, '/home/*/public_html') !== false) {
             return false;
         }
@@ -100,27 +87,19 @@ function canAccessBrowserCookies(): bool
 
 function detectInstalledBrowsers(): array
 {
-    /**
-     * Detecta quais navegadores estão instalados no sistema
-     * testando cada um individualmente com yt-dlp.
-     */
     $browsers = ['chrome', 'firefox', 'edge', 'brave'];
     $availableBrowsers = [];
 
     foreach ($browsers as $browser) {
-        // Teste simples: tenta usar --cookies-from-browser com cada navegador
-        // Se falhar com "could not find", o navegador não está disponível
         $testCmd = 'yt-dlp --cookies-from-browser ' . escapeshellarg($browser) . ' --version 2>&1';
         exec($testCmd, $output, $returnCode);
         $output = implode(' ', $output);
 
-        // Se conseguiu executar ou falhou por outro motivo (não "could not find"), considera disponível
         if (strpos($output, 'could not find') === false) {
             $availableBrowsers[] = $browser;
         }
     }
 
-    // Se nenhum navegador foi detectado, retorna lista padrão
     if (empty($availableBrowsers)) {
         return ['chrome', 'firefox', 'edge'];
     }
@@ -132,14 +111,12 @@ function getAutomaticBrowserCookieArgSets(): array
 {
     $installedBrowsers = detectInstalledBrowsers();
     
-    // Remover Brave se houver erro de detecção para evitar falhas posteriores
     $installedBrowsers = array_filter(
         $installedBrowsers,
         fn($b) => $b !== 'brave' || isValidBravePath()
     );
 
     if (empty($installedBrowsers)) {
-        // Fallback: tentar os navegadores mais comuns
         return [
             ['--cookies-from-browser', 'chrome'],
             ['--cookies-from-browser', 'firefox'],
@@ -147,7 +124,6 @@ function getAutomaticBrowserCookieArgSets(): array
         ];
     }
 
-    // Priorizar navegadores mais comuns (nesta ordem)
     $priority = ['chrome', 'firefox', 'edge', 'brave'];
     $orderedBrowsers = [];
     
@@ -165,10 +141,6 @@ function getAutomaticBrowserCookieArgSets(): array
 
 function isValidBravePath(): bool
 {
-    /**
-     * Verifica se o Brave está em um caminho acessível.
-     * Evita tentar usar Brave se estiver em um caminho inválido.
-     */
     if (PHP_OS_FAMILY === 'Windows') {
         $paths = [
             'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe',
@@ -180,7 +152,6 @@ function isValidBravePath(): bool
             }
         }
     } else {
-        // No Linux/Mac, tentar encontrar Brave em /opt ou /usr/bin
         $paths = [
             '/opt/brave.com/brave/brave',
             '/usr/bin/brave',
@@ -200,7 +171,7 @@ function isValidBravePath(): bool
 function isAntiBotOutput(array $outputLines): bool
 {
     $detail = mb_strtolower(implode(' ', array_slice($outputLines, -12)));
-    $detail = str_replace(["’", "\u{2019}"], "'", $detail);
+    $detail = str_replace(["'", "\u{2019}"], "'", $detail);
 
     return str_contains($detail, "sign in to confirm you're not a bot")
         || str_contains($detail, 'please sign in')
@@ -217,7 +188,6 @@ function isSafeUrl(string $url): bool
         return false;
     }
     $ip = gethostbyname($host);
-    // Block private/reserved IP ranges (basic SSRF protection)
     return filter_var(
         $ip,
         FILTER_VALIDATE_IP,
@@ -289,8 +259,6 @@ if ($format === 'mp3') {
 
 $baseArgs[] = $url;
 
-$cmd = buildCommand($baseArgs) . ' 2>&1';
-
 // ---- Execute yt-dlp ----------------------------------------------------- //
 
 $isYoutube = isYoutubeUrl($url);
@@ -299,19 +267,12 @@ $isTwitter = stripos($url, 'twitter.com') !== false || stripos($url, 'x.com') !=
 
 $attempts = [$baseArgs];
 
-// Try with cookies for platforms that often require authentication
-// BUT: only add cookie attempts if they're likely to work
-// (configured explicitly, local file exists, or we can detect browsers)
 if ($isYoutube || $isInstagram || $isTwitter) {
     $configuredCookieArgs = getConfiguredCookieArgs();
     if (!empty($configuredCookieArgs)) {
-        // These are explicitly configured, so try them
         $attempts[] = array_merge($baseArgs, $configuredCookieArgs);
     }
     
-    // Only try browser cookies if we can detect at least one working browser
-    // AND we're not on a server where browser cookies will fail
-    // (detect by checking if we can access browser data)
     if (canAccessBrowserCookies()) {
         foreach (getAutomaticBrowserCookieArgSets() as $cookieArgSet) {
             $attempts[] = array_merge($baseArgs, $cookieArgSet);
@@ -330,27 +291,23 @@ foreach ($attempts as $attemptArgs) {
 
     $outputLines = $attemptOutput;
     $returnCode = $attemptCode;
-    $lastDetail = trim(implode(' ', array_slice($attemptOutput, -5)));
+    $lastDetail = trim(implode(' ', array_slice($outputLines, -5)));
 
     if ($attemptCode === 0) {
         break;
     }
 
-    // Detectar se o erro é por Brave não encontrado - pular para próxima tentativa
     $outputText = implode(' ', $attemptOutput);
-    if (stripos($outputText, 'could not find brave') !== false || 
-        stripos($outputText, 'brave') !== false && stripos($outputText, 'database') !== false) {
-        // Skip this attempt and try next
+    if (stripos($outputText, 'could not find') !== false && 
+        (stripos($outputText, 'database') !== false || 
+         stripos($outputText, 'cookies') !== false)) {
         continue;
     }
 
-    // For these platforms, always try next attempt if current failed
-    // For YouTube, also check for anti-bot; for others, check if error is recoverable
     $shouldContinue = false;
     if ($isYoutube) {
         $shouldContinue = isAntiBotOutput($attemptOutput);
     } elseif ($isInstagram || $isTwitter) {
-        // For Instagram/Twitter, try next attempt if we have authentication attempts left
         $shouldContinue = (count($attempts) > 1);
     }
     
@@ -361,11 +318,18 @@ foreach ($attempts as $attemptArgs) {
 
 if ($returnCode !== 0) {
     cleanup($tmpDir);
-    $detail = trim(implode(' ', array_slice($outputLines, -5)));
+    // Coletar até 20 linhas da saída
+    $detail = trim(implode(' ', array_slice($outputLines, -20)));
     if ($detail === '' && $lastDetail !== '') {
         $detail = $lastDetail;
     }
-    $normalizedDetail = str_replace(["’", "\u{2019}"], "'", mb_strtolower($detail));
+    
+    // Se ainda estiver muito curto, usar toda a saída
+    if (strlen($detail) < 30 && !empty($outputLines)) {
+        $detail = implode("\n", $outputLines);
+    }
+    
+    $normalizedDetail = str_replace(["'", "\u{2019}"], "'", mb_strtolower($detail));
 
     if (str_contains($normalizedDetail, "sign in to confirm you're not a bot")) {
         $detectedBrowsers = detectInstalledBrowsers();
@@ -382,7 +346,7 @@ if ($returnCode !== 0) {
     }
 
     if ($detail === '') {
-        $detail = 'Falha desconhecida do yt-dlp.';
+        $detail = 'Erro desconhecido ao processar o vídeo. Verifique se a URL é válida.';
     }
 
     sendError("Não foi possível processar o download desta mídia.\n\nDetalhe: {$detail}", 422);
@@ -407,7 +371,6 @@ require_once __DIR__ . '/includes/counter.php';
 incrementDownloadCount();
 
 // ---- Set Download Token Cookie ------------------------------------------ //
-// The frontend JS polls for this cookie to detect when the download starts.
 
 if ($token !== '') {
     setcookie('fileDownloadToken', $token, [
@@ -425,8 +388,7 @@ while (ob_get_level()) {
     ob_end_clean();
 }
 
-// Build Content-Disposition with both ASCII fallback and RFC 5987 UTF-8 name
-$asciiName  = preg_replace('/[^\x20-\x7E]/', '_', $fileName); // fallback for old browsers
+$asciiName  = preg_replace('/[^\x20-\x7E]/', '_', $fileName);
 $encodedName = rawurlencode($fileName);
 
 header('Content-Type: ' . $mimeType);
@@ -438,7 +400,7 @@ header('Expires: 0');
 
 $fp = fopen($filePath, 'rb');
 while (!feof($fp) && connection_status() === 0) {
-    echo fread($fp, 1_048_576); // 1 MB chunks
+    echo fread($fp, 1_048_576);
     flush();
 }
 fclose($fp);
