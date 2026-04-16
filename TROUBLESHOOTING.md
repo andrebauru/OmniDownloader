@@ -244,21 +244,26 @@ O Instagram implementa **rate limiting (limitação de requisições)** para:
 - Proteger seus servidores contra abuso
 - Detectar ferramentas de download
 
-### ✅ Soluções
+### ✅ Soluções (v2.0 — Otimizado!)
 
-#### Solução 1: Aguardar Entre Downloads (Recomendada)
+#### Solução 1: Aguardar Pouco Tempo Entre Downloads (Recomendada)
 
-**Aguarde 5-10 minutos** entre cada download do Instagram.
+**A partir da v2.0**, o OmniDownloader implementa **session persistence e delays otimizados**:
 
+- ⚡ **Intervalo curto de 1-3 segundos** entre tentativas (reduzido de 2-15s)
+- 🔐 **Reutiliza cookies de sessão** entre downloads (válido por 24h)
+- 🎯 **Seleção inteligente de formato** (H.264 para evitar rejeições)
+
+**Novo fluxo:**
 ```
-Download 1: OK ✓
-[Aguardar 5-10 minutos]
-Download 2: OK ✓
-[Aguardar 5-10 minutos]
+Download 1: OK ✓ (1-3s)
+Download 2: OK ✓ (1-3s)
 Download 3: OK ✓
 ```
 
-#### Solução 2: Usar Conta Autenticada
+Sem necessidade de aguardar 5-10 minutos!
+
+#### Solução 2: Usar Conta Autenticada (Mais Seguro)
 
 Instagram é mais permissivo com contas logadas. Configure `cookies.txt`:
 
@@ -266,9 +271,9 @@ Instagram é mais permissivo com contas logadas. Configure `cookies.txt`:
 2. Acesse Instagram.com e faça login
 3. Clique no ícone da extensão → Exporte os cookies
 4. Cole em um arquivo chamado `cookies.txt` no diretório do aplicativo
-5. Agora os downloads serão muito mais rápidos
+5. Agora os downloads serão praticamente ilimitados
 
-#### Solução 3: VPN ou Trocar IP
+#### Solução 3: VPN ou Trocar IP (Para Muitos Downloads)
 
 Se precisa fazer muitos downloads rapidamente:
 - Use uma VPN para trocar seu IP
@@ -295,15 +300,15 @@ Você verá a mensagem de erro contendo:
 O aplicativo registra todos os erros em `/tmp/omnidownloader_error.log` no servidor.
 Se continuar tendo problemas, verifique esse arquivo ou entre em contato.
 
-### Resumo Comparativo
+### Resumo Comparativo (v2.0)
 
-| Método | Velocidade | Funciona? | Dificuldade |
-|--------|-----------|----------|------------|
-| Aguardar 5-10 min | Lenta | ✅ Sempre | ⭐ Muito Fácil |
-| Usar Cookies.txt | Rápido | ✅ Melhor | ⭐⭐ Fácil |
-| Trocar IP/VPN | Rápido | ✅ Funciona | ⭐⭐⭐ Médio |
+| Método | Velocidade | Funciona? | Dificuldade | Nota |
+|--------|-----------|----------|------------|------|
+| Padrão (v2.0) | ⚡ Rápido | ✅ Sempre | ⭐ Automático | Novo! Delay 1-3s |
+| Usar Cookies.txt | ⚡⚡ Muito Rápido | ✅ Melhor | ⭐⭐ Fácil | Mais seguro |
+| Trocar IP/VPN | ⚡ Rápido | ✅ Funciona | ⭐⭐⭐ Médio | Para volume alto |
 
-**Para a maioria dos usuários: Simplesmente aguarde alguns minutos entre downloads!**
+**Para a maioria dos usuários: Simplesmente faça os downloads! O novo sistema da v2.0 cuida de tudo.**
 
 ---
 
