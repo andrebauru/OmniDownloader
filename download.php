@@ -69,15 +69,21 @@ function getConfiguredCookieArgs(): array
 
 function canAccessBrowserCookies(): bool
 {
+    // Verifica se podemos acessar cookies de navegadores.
+    // Em servidores web, nao podemos.
+    
     if (PHP_OS_FAMILY !== 'Windows') {
-        $currentUser = trim(shell_exec('whoami') ?? '');
         $scriptDir = __DIR__;
         
-        if (in_array($currentUser, ['www-data', 'www', 'httpd', 'apache', 'nginx', '_www', 'nobody'], true)) {
+        // Se estamos em /var/www ou /home/.../public_html, eh servidor
+        if (strpos($scriptDir, '/var/www') === 0 || 
+            (strpos($scriptDir, '/home') === 0 && strpos($scriptDir, 'public_html') !== false)) {
             return false;
         }
         
-        if (strpos($scriptDir, '/var/www') === 0 || strpos($scriptDir, '/home/*/public_html') !== false) {
+        // Tambem verificar usuario
+        $currentUser = trim(shell_exec('whoami') ?? '');
+        if (in_array($currentUser, ['www-data', 'www', 'httpd', 'apache', 'nginx', '_www', 'nobody'], true)) {
             return false;
         }
     }
@@ -338,6 +344,21 @@ if ($returnCode !== 0) {
     
     $normalizedDetail = str_replace(["'", "\u{2019}"], "'", mb_strtolower($detail));
 
+    // Instagram authentication required
+    if ($isInstagram && (str_contains($normalizedDetail, 'login required') || 
+                         str_contains($normalizedDetail, 'rate-limit reached') ||
+                         str_contains($normalizedDetail, 'not available'))) {
+        sendError(
+            "Instagram requer autenticacao para baixar este conteudo.\n\n"
+            . "Solucoes:\n"
+            . "1. Certifique-se de que o video eh publico\n"
+            . "2. Configure um arquivo cookies.txt com autenticacao do Instagram\n"
+            . "3. Veja INSTAGRAM_COOKIES.md para mais detalhes\n\n"
+            . "Detalhe: {$detail}",
+            403
+        );
+    }
+
     if (str_contains($normalizedDetail, "sign in to confirm you're not a bot")) {
         $detectedBrowsers = detectInstalledBrowsers();
         $browserList = !empty($detectedBrowsers) 
@@ -345,18 +366,18 @@ if ($returnCode !== 0) {
             : 'Chrome/Edge/Firefox/Brave';
         
         sendError(
-            "O YouTube está exigindo verificação anti-bot para este vídeo.\n"
-            . "O servidor já tentou ativar cookies automaticamente ({$browserList}), mas não conseguiu autenticar.\n\n"
-            . "Detalhe técnico: {$detail}",
+            "O YouTube esta exigindo verificacao anti-bot para este video.\n"
+            . "O servidor ja tentou ativar cookies automaticamente ({$browserList}), mas nao conseguiu autenticar.\n\n"
+            . "Detalhe tecnico: {$detail}",
             429
         );
     }
 
     if ($detail === '') {
-        $detail = 'Erro desconhecido ao processar o vídeo. Verifique se a URL é válida.';
+        $detail = 'Erro desconhecido ao processar o video. Verifique se a URL eh valida.';
     }
 
-    sendError("Não foi possível processar o download desta mídia.\n\nDetalhe: {$detail}", 422);
+    sendError("Nao foi possivel processar o download desta midia.\n\nDetalhe: {$detail}", 422);
 }
 
 // ---- Locate Output File ------------------------------------------------- //

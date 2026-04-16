@@ -62,15 +62,21 @@ function getConfiguredCookieArgs(): array
 
 function canAccessBrowserCookies(): bool
 {
+    // Verifica se podemos acessar cookies de navegadores.
+    // Em servidores web, nao podemos.
+    
     if (PHP_OS_FAMILY !== 'Windows') {
-        $currentUser = trim(shell_exec('whoami') ?? '');
         $scriptDir = __DIR__;
         
-        if (in_array($currentUser, ['www-data', 'www', 'httpd', 'apache', 'nginx', '_www', 'nobody'], true)) {
+        // Se estamos em /var/www ou /home/.../public_html, eh servidor
+        if (strpos($scriptDir, '/var/www') === 0 || 
+            (strpos($scriptDir, '/home') === 0 && strpos($scriptDir, 'public_html') !== false)) {
             return false;
         }
         
-        if (strpos($scriptDir, '/var/www') === 0 || strpos($scriptDir, '/home/*/public_html') !== false) {
+        // Tambem verificar usuario
+        $currentUser = trim(shell_exec('whoami') ?? '');
+        if (in_array($currentUser, ['www-data', 'www', 'httpd', 'apache', 'nginx', '_www', 'nobody'], true)) {
             return false;
         }
     }
