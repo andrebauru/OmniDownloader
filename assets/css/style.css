@@ -779,7 +779,24 @@ body {
 }
 
 .footer-nav {
-    display: none; /* hidden visually, present for crawlers */
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 0.5rem;
+}
+
+.footer-nav a {
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 0.88rem;
+    font-weight: 600;
+    transition: color 0.2s;
+}
+
+.footer-nav a:hover {
+    color: #ffffff;
+    text-decoration: underline;
 }
 
 .footer-copy {
@@ -791,6 +808,18 @@ body {
     font-size: 0.75rem;
     color: rgba(255, 255, 255, 0.28);
     margin-top: 0.25rem;
+}
+
+.footer-version {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.35);
+    margin-top: 0.5rem;
+    text-align: center;
+}
+
+.footer-version strong {
+    color: var(--accent);
+    font-weight: 600;
 }
 
 .cookie-notice {

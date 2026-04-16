@@ -765,11 +765,12 @@ function he(string $s): string {
             </div>
         </main>
 
-        <!-- ======= Footer ======= -->
+        <!-- Footer -->
         <footer class="footer">
             <div class="container">
                 <nav class="footer-nav" aria-label="Footer links">
-                    <a href="https://andretsc.dev" target="_blank" rel="noopener noreferrer">Andre Silva</a>
+                    <a href="https://github.com/andrebauru/andrebauru" target="_blank" rel="noopener noreferrer">📌 Sobre Andre Silva</a> &middot;
+                    <a href="https://andretsc.dev" target="_blank" rel="noopener noreferrer">🌐 Meu Site</a>
                 </nav>
                 <p class="footer-copy">
                     &copy; <?= date('Y') ?>
@@ -777,6 +778,9 @@ function he(string $s): string {
                     &middot; <?= he($t['footer_copy']) ?>
                 </p>
                 <p class="footer-disclaimer"><?= he($t['footer_disc']) ?></p>
+                <p class="footer-version">
+                    <small>OmniDownloader <strong>v2.0</strong> • Built with PHP, yt-dlp & FFmpeg</small>
+                </p>
                 <p id="cookieNotice" class="cookie-notice hidden" aria-live="polite">
                     <?= he($t['cookie_hint']) ?>
                 </p>

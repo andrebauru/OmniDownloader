@@ -65,6 +65,31 @@ function findFFmpeg(): ?string
     return null;
 }
 
+function getInstagramSessionCookiesPath(): string
+{
+    return sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'omnidownloader_instagram_session.txt';
+}
+
+function getInstagramSessionCookie(): ?array
+{
+    $sessionFile = getInstagramSessionCookiesPath();
+    
+    // Verificar se há arquivo de sessão e se não expirou (24 horas)
+    if (is_file($sessionFile)) {
+        $mtime = filemtime($sessionFile);
+        if ($mtime && (time() - $mtime) < 86400) {
+            $cookieContent = @file_get_contents($sessionFile);
+            if ($cookieContent && strlen($cookieContent) > 50) {
+                // Sessão válida encontrada
+                return ['--cookies', $sessionFile];
+            }
+        }
+        @unlink($sessionFile); // Deletar sessão expirada
+    }
+    
+    return null;
+}
+
 function optimizeVideoForChat(string $inputFile): string
 {
     $ffmpeg = findFFmpeg();
@@ -267,23 +292,18 @@ function isSafeUrl(string $url): bool
 
 function waitBetweenAttempts(int $attempt, string $url): void
 {
-    // Para Instagram, aguardar progressivamente entre tentativas
+    // Para Instagram, aguardar progressivamente entre tentativas (mas bem curto)
     $isInstagram = stripos($url, 'instagram.com') !== false;
     
     if (!$isInstagram) {
         return; // Sem delay para outros sites
     }
     
-    // Delay progressivo: 2s, 4s, 6s, etc.
-    $delay = $attempt * 2;
-    
-    // Máximo 15 segundos de espera
-    if ($delay > 15) {
-        $delay = 15;
-    }
+    // Delay muito curto para não desistir rápido: 1s, 2s, 3s max
+    $delay = min($attempt, 3);
     
     if ($delay > 0) {
-        sleep($delay);
+        usleep($delay * 1_000_000); // sleep em microsegundos para ser mais preciso
     }
 }
 
@@ -375,6 +395,14 @@ $isTwitter = stripos($url, 'twitter.com') !== false || stripos($url, 'x.com') !=
 $attempts = [$baseArgs];
 
 if ($isYoutube || $isInstagram || $isTwitter) {
+    // Para Instagram, tentar usar sessão persistente primeiro (cookies salvos)
+    if ($isInstagram) {
+        $sessionCookie = getInstagramSessionCookie();
+        if ($sessionCookie) {
+            $attempts[] = array_merge($baseArgs, $sessionCookie);
+        }
+    }
+    
     $configuredCookieArgs = getConfiguredCookieArgs();
     if (!empty($configuredCookieArgs)) {
         $attempts[] = array_merge($baseArgs, $configuredCookieArgs);
