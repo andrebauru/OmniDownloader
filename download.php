@@ -42,6 +42,70 @@ function isYoutubeUrl(string $url): bool
     return str_contains($u, 'youtube.com') || str_contains($u, 'youtu.be');
 }
 
+function findFFmpeg(): ?string
+{
+    // Tenta encontrar ffmpeg no PATH
+    $ffmpeg = shell_exec('which ffmpeg 2>/dev/null') ?? shell_exec('where ffmpeg 2>nul');
+    if ($ffmpeg) {
+        return trim($ffmpeg);
+    }
+    
+    // Tenta no diretório local do projeto (Windows)
+    $localFFmpeg = __DIR__ . DIRECTORY_SEPARATOR . 'ffmpeg_bin' . DIRECTORY_SEPARATOR . 'ffmpeg-8.0.1-essentials_build' . DIRECTORY_SEPARATOR . 'bin' . DIRECTORY_SEPARATOR . 'ffmpeg.exe';
+    if (is_file($localFFmpeg)) {
+        return $localFFmpeg;
+    }
+    
+    // Tenta versão alternativa do caminho local
+    $items = glob(__DIR__ . DIRECTORY_SEPARATOR . 'ffmpeg_bin' . DIRECTORY_SEPARATOR . 'ffmpeg-*' . DIRECTORY_SEPARATOR . 'bin' . DIRECTORY_SEPARATOR . 'ffmpeg.exe') ?: [];
+    if (!empty($items)) {
+        return reset($items);
+    }
+    
+    return null;
+}
+
+function optimizeVideoForChat(string $inputFile): string
+{
+    $ffmpeg = findFFmpeg();
+    if (!$ffmpeg) {
+        // FFmpeg não disponível, retorna arquivo original
+        return $inputFile;
+    }
+    
+    $outputFile = $inputFile . '.optimized.mp4';
+    
+    // Re-codificar para H.264 + AAC (máxima compatibilidade com apps de chat)
+    // Usar preset fast para não demorar muito
+    $cmd = implode(' ', array_map('escapeshellarg', [
+        $ffmpeg,
+        '-i', $inputFile,
+        '-c:v', 'h264',           // Codec de vídeo H.264 (compatível com tudo)
+        '-preset', 'fast',        // Velocidade (fast = menos CPU, mais rápido)
+        '-crf', '28',             // Qualidade (28 = boa qualidade, arquivo menor)
+        '-maxrate', '5000k',      // Limite máximo de bitrate
+        '-bufsize', '10000k',     // Buffer para evitar picos
+        '-c:a', 'aac',            // Codec de áudio AAC
+        '-b:a', '128k',           // Bitrate de áudio
+        '-movflags', '+faststart',// Otimizar para streaming (mostra no início)
+        '-y',                     // Sobrescrever sem perguntar
+        $outputFile,
+    ])) . ' 2>&1';
+    
+    @exec($cmd, $output, $returnCode);
+    
+    if ($returnCode === 0 && is_file($outputFile)) {
+        // Remover arquivo original e renomear otimizado
+        @unlink($inputFile);
+        @rename($outputFile, $inputFile);
+        return $inputFile;
+    }
+    
+    // Se falhar, retorna arquivo original
+    @unlink($outputFile);
+    return $inputFile;
+}
+
 function buildCommand(array $args): string
 {
     return implode(' ', array_map('escapeshellarg', $args));
@@ -292,8 +356,10 @@ if ($format === 'mp3') {
     $baseArgs[] = '--audio-quality';
     $baseArgs[] = '192K';
 } else {
+    // Priorizar H.264 + AAC para máxima compatibilidade com apps de chat
+    // Fallback para qualquer formato se necessário
     $baseArgs[] = '-f';
-    $baseArgs[] = 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best';
+    $baseArgs[] = 'bestvideo[vcodec^=h264][ext=mp4]+bestaudio[acodec=aac]/bestvideo[vcodec^=h264]+bestaudio/bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best';
     $baseArgs[] = '--merge-output-format';
     $baseArgs[] = 'mp4';
 }
@@ -446,6 +512,15 @@ if (empty($files)) {
 }
 
 $filePath = (string) reset($files);
+
+// ---- Optimize Video for Chat Compatibility ----------------------------- //
+
+if ($format === 'video') {
+    // Reconverter vídeo para máxima compatibilidade com apps de chat
+    // (H.264 + AAC é compatível com WhatsApp, Telegram, Instagram, etc)
+    $filePath = optimizeVideoForChat($filePath);
+}
+
 $fileName = basename($filePath);
 $fileSize = filesize($filePath);
 $mimeType = ($format === 'mp3') ? 'audio/mpeg' : 'video/mp4';
