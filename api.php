@@ -60,13 +60,30 @@ function getConfiguredCookieArgs(): array
     return [];
 }
 
+function canAccessBrowserCookies(): bool
+{
+    if (PHP_OS_FAMILY !== 'Windows') {
+        $currentUser = trim(shell_exec('whoami') ?? '');
+        $scriptDir = __DIR__;
+        
+        if (in_array($currentUser, ['www-data', 'www', 'httpd', 'apache', 'nginx', '_www', 'nobody'], true)) {
+            return false;
+        }
+        
+        if (strpos($scriptDir, '/var/www') === 0 || strpos($scriptDir, '/home/*/public_html') !== false) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
 function getAutomaticBrowserCookieArgSets(): array
 {
     return [
         ['--cookies-from-browser', 'chrome'],
         ['--cookies-from-browser', 'edge'],
         ['--cookies-from-browser', 'firefox'],
-        ['--cookies-from-browser', 'brave'],
     ];
 }
 
@@ -121,13 +138,18 @@ $isTwitter = stripos($url, 'twitter.com') !== false || stripos($url, 'x.com') !=
 $attempts = [$args];
 
 // Try with cookies for platforms that often require authentication
+// BUT: only add cookie attempts if they're likely to work
 if ($isYoutube || $isInstagram || $isTwitter) {
     $configuredCookieArgs = getConfiguredCookieArgs();
     if (!empty($configuredCookieArgs)) {
         $attempts[] = array_merge($args, $configuredCookieArgs);
     }
-    foreach (getAutomaticBrowserCookieArgSets() as $cookieArgSet) {
-        $attempts[] = array_merge($args, $cookieArgSet);
+    
+    // Only try browser cookies if NOT on a server environment
+    if (canAccessBrowserCookies()) {
+        foreach (getAutomaticBrowserCookieArgSets() as $cookieArgSet) {
+            $attempts[] = array_merge($args, $cookieArgSet);
+        }
     }
 }
 
@@ -147,13 +169,19 @@ foreach ($attempts as $attemptArgs) {
         break;
     }
 
+    // Skip browser cookie errors and try next
+    $outputText = implode(' ', $attemptOutput);
+    if (stripos($outputText, 'could not find') !== false && 
+        (stripos($outputText, 'database') !== false || 
+         stripos($outputText, 'cookies') !== false)) {
+        continue;
+    }
+
     // For these platforms, always try next attempt if current failed
-    // For YouTube, also check for anti-bot; for others, check if error is recoverable
     $shouldContinue = false;
     if ($isYoutube) {
         $shouldContinue = isAntiBotOutput($attemptOutput);
     } elseif ($isInstagram || $isTwitter) {
-        // For Instagram/Twitter, try next attempt if we have authentication attempts left
         $shouldContinue = (count($attempts) > 1);
     }
     
