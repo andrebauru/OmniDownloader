@@ -105,7 +105,39 @@ function isAntiBotOutput(array $outputLines): bool
         || str_contains($detail, 'could not find')
         || str_contains($detail, 'cookies database');
 }
+function getRandomUserAgent(): string
+{
+    $agents = [
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
+    ];
+    return $agents[array_rand($agents)];
+}
 
+function waitBetweenAttempts(int $attempt, string $url): void
+{
+    // Para Instagram, aguardar progressivamente entre tentativas
+    $isInstagram = stripos($url, 'instagram.com') !== false;
+    
+    if (!$isInstagram) {
+        return; // Sem delay para outros sites
+    }
+    
+    // Delay progressivo: 2s, 4s, 6s, etc.
+    $delay = $attempt * 2;
+    
+    // M\u00e1ximo 15 segundos de espera
+    if ($delay > 15) {
+        $delay = 15;
+    }
+    
+    if ($delay > 0) {
+        sleep($delay);
+    }
+}
 // ---- Input Validation --------------------------------------------------- //
 
 $url = isset($_GET['url']) ? trim($_GET['url']) : '';
@@ -124,8 +156,9 @@ $args = [
     'yt-dlp',
     '--no-playlist',
     '--no-warnings',
-    '--socket-timeout', '20',
-    '--retries', '3',
+    '--socket-timeout', '30',
+    '--retries', '5',
+    '--user-agent', getRandomUserAgent(),
     '--dump-single-json',
     '--no-download',
 ];
@@ -162,7 +195,12 @@ if ($isYoutube || $isInstagram || $isTwitter) {
 $outputLines = [];
 $returnCode = 1;
 
-foreach ($attempts as $attemptArgs) {
+foreach ($attempts as $attemptIndex => $attemptArgs) {
+    // Aguardar entre tentativas (especialmente importante para Instagram)
+    if ($attemptIndex > 0) {
+        waitBetweenAttempts($attemptIndex, $url);
+    }
+    
     $attemptOutput = [];
     $attemptCode = 1;
     $cmd = implode(' ', array_map('escapeshellarg', $attemptArgs)) . ' 2>&1';

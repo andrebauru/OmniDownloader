@@ -609,7 +609,16 @@ downloadFrame.addEventListener('load', () => {
                 showCookieNotice();
                 return;
             }
-            showError(bodyText);
+            
+            // Check for rate-limit and show more helpful message
+            const lowerBodyText = bodyText.toLowerCase();
+            if (lowerBodyText.includes('rate') || 
+                lowerBodyText.includes('bloqueou') ||
+                lowerBodyText.includes('aguarde')) {
+                showError(bodyText + '\n\n💡 Dica: Se necessário, espere alguns minutos e tente novamente.');
+            } else {
+                showError(bodyText);
+            }
         } else if (bodyText && bodyText.length >= 2000) {
             // Large response - might be HTML page with error, try to extract text content
             console.warn('[Download] Large response received:', bodyText.substring(0, 500));

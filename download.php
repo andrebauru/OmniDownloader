@@ -201,6 +201,40 @@ function isSafeUrl(string $url): bool
     ) !== false;
 }
 
+function waitBetweenAttempts(int $attempt, string $url): void
+{
+    // Para Instagram, aguardar progressivamente entre tentativas
+    $isInstagram = stripos($url, 'instagram.com') !== false;
+    
+    if (!$isInstagram) {
+        return; // Sem delay para outros sites
+    }
+    
+    // Delay progressivo: 2s, 4s, 6s, etc.
+    $delay = $attempt * 2;
+    
+    // Máximo 15 segundos de espera
+    if ($delay > 15) {
+        $delay = 15;
+    }
+    
+    if ($delay > 0) {
+        sleep($delay);
+    }
+}
+
+function getRandomUserAgent(): string
+{
+    $agents = [
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
+    ];
+    return $agents[array_rand($agents)];
+}
+
 // ---- Input Validation --------------------------------------------------- //
 
 $url    = isset($_POST['url'])    ? trim($_POST['url'])    : '';
@@ -238,10 +272,11 @@ $baseArgs = [
     '--no-playlist',
     '--no-warnings',
     '--newline',
-    '--socket-timeout', '20',
-    '--retries', '4',
-    '--fragment-retries', '4',
-    '--extractor-retries', '2',
+    '--socket-timeout', '30',
+    '--retries', '5',
+    '--fragment-retries', '5',
+    '--extractor-retries', '3',
+    '--user-agent', getRandomUserAgent(),
     '--output', $tmpDir . DIRECTORY_SEPARATOR . '%(title).80s.%(ext)s',
 ];
 
@@ -290,7 +325,12 @@ $outputLines = [];
 $returnCode = 1;
 $lastDetail = '';
 
-foreach ($attempts as $attemptArgs) {
+foreach ($attempts as $attemptIndex => $attemptArgs) {
+    // Aguardar entre tentativas (especialmente importante para Instagram)
+    if ($attemptIndex > 0) {
+        waitBetweenAttempts($attemptIndex, $url);
+    }
+    
     $attemptOutput = [];
     $attemptCode = 1;
     exec(buildCommand($attemptArgs) . ' 2>&1', $attemptOutput, $attemptCode);
@@ -344,10 +384,26 @@ if ($returnCode !== 0) {
     
     $normalizedDetail = str_replace(["'", "\u{2019}"], "'", mb_strtolower($detail));
 
+    // Instagram rate-limit detection - more comprehensive
+    if ($isInstagram && (str_contains($normalizedDetail, 'rate') || 
+                         str_contains($normalizedDetail, 'too many') ||
+                         str_contains($normalizedDetail, 'please wait') ||
+                         str_contains($normalizedDetail, 'temporarily blocked') ||
+                         str_contains($normalizedDetail, 'retry after'))) {
+        sendError(
+            "Instagram bloqueou temporariamente por excesso de requisicoes.\n\n"
+            . "Aguarde 5-10 minutos antes de tentar novamente.\n\n"
+            . "Dica: Se estiver tentando varias downloads em sequencia,\n"
+            . "aguarde alguns minutos entre cada download para evitar bloqueio.\n\n"
+            . "Detalhe: {$detail}",
+            429
+        );
+    }
+    
     // Instagram authentication required
     if ($isInstagram && (str_contains($normalizedDetail, 'login required') || 
-                         str_contains($normalizedDetail, 'rate-limit reached') ||
-                         str_contains($normalizedDetail, 'not available'))) {
+                         str_contains($normalizedDetail, 'not available') ||
+                         str_contains($normalizedDetail, 'private account'))) {
         sendError(
             "Instagram requer autenticacao para baixar este conteudo.\n\n"
             . "Solucoes:\n"
