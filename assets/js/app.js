@@ -593,7 +593,16 @@ downloadFrame.addEventListener('load', () => {
     try {
         const doc      = downloadFrame.contentDocument || downloadFrame.contentWindow.document;
         const bodyText = doc.body ? doc.body.innerText.trim() : '';
-        if (bodyText && bodyText.length < 1000) {
+        
+        // Debug: log any response
+        console.log('[Download Iframe Load]', {
+            hidden: loadingState.classList.contains('hidden'),
+            bodyLength: bodyText.length,
+            bodyPreview: bodyText.substring(0, 200),
+            hasError: bodyText.length > 0 && bodyText.length < 2000
+        });
+        
+        if (bodyText && bodyText.length < 2000) {
             stopPolling();
             if (isCookieRelatedBlock(bodyText)) {
                 showForm();
@@ -601,8 +610,16 @@ downloadFrame.addEventListener('load', () => {
                 return;
             }
             showError(bodyText);
+        } else if (bodyText && bodyText.length >= 2000) {
+            // Large response - might be HTML page with error, try to extract text content
+            console.warn('[Download] Large response received:', bodyText.substring(0, 500));
+            stopPolling();
+            showError('Erro ao processar download. Por favor, tente novamente.');
         }
-    } catch { /* cross-origin */ }
+    } catch (e) {
+        console.error('[Download Iframe Error]', e);
+        // Cross-origin or other iframe issues
+    }
 });
 
 tryAgainBtn.addEventListener('click', () => { showForm(); urlInput.focus(); });

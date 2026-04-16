@@ -318,16 +318,23 @@ foreach ($attempts as $attemptArgs) {
 
 if ($returnCode !== 0) {
     cleanup($tmpDir);
-    // Coletar até 20 linhas da saída
+    // Tentar pegar mais detalhes da saída - até 20 linhas
     $detail = trim(implode(' ', array_slice($outputLines, -20)));
     if ($detail === '' && $lastDetail !== '') {
         $detail = $lastDetail;
     }
     
-    // Se ainda estiver muito curto, usar toda a saída
+    // Se ainda estiver muito vazio, mostrar toda a saída com quebra de linha
     if (strlen($detail) < 30 && !empty($outputLines)) {
         $detail = implode("\n", $outputLines);
     }
+    
+    // Sempre registrar em log para debug
+    @file_put_contents(
+        sys_get_temp_dir() . '/omnidownloader_error.log',
+        date('Y-m-d H:i:s') . " | URL: $url | Return: $returnCode | Detail: " . substr($detail, 0, 200) . "\n",
+        FILE_APPEND
+    );
     
     $normalizedDetail = str_replace(["'", "\u{2019}"], "'", mb_strtolower($detail));
 
