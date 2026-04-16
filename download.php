@@ -67,6 +67,37 @@ function getConfiguredCookieArgs(): array
     return [];
 }
 
+function canAccessBrowserCookies(): bool
+{
+    /**
+     * Verifica se podemos acessar cookies de navegadores.
+     * Em servidores web (www-data user), geralmente não podemos.
+     * 
+     * Retorna false se:
+     * - Estamos rodando como www-data (servidor web)
+     * - Estamos em um diretório /var/www (típico de servidor)
+     * - Não conseguimos escrever em diretórios de navegador
+     */
+    
+    // Se não é Windows, verificar se é um servidor web
+    if (PHP_OS_FAMILY !== 'Windows') {
+        $currentUser = trim(shell_exec('whoami') ?? '');
+        $scriptDir = __DIR__;
+        
+        // Servidores web típicos usam www-data ou similar
+        if (in_array($currentUser, ['www-data', 'www', 'httpd', 'apache', 'nginx', '_www', 'nobody'], true)) {
+            return false;
+        }
+        
+        // Se estamos em /var/www, é provavelmente um servidor
+        if (strpos($scriptDir, '/var/www') === 0 || strpos($scriptDir, '/home/*/public_html') !== false) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
 function detectInstalledBrowsers(): array
 {
     /**
@@ -269,13 +300,22 @@ $isTwitter = stripos($url, 'twitter.com') !== false || stripos($url, 'x.com') !=
 $attempts = [$baseArgs];
 
 // Try with cookies for platforms that often require authentication
+// BUT: only add cookie attempts if they're likely to work
+// (configured explicitly, local file exists, or we can detect browsers)
 if ($isYoutube || $isInstagram || $isTwitter) {
     $configuredCookieArgs = getConfiguredCookieArgs();
     if (!empty($configuredCookieArgs)) {
+        // These are explicitly configured, so try them
         $attempts[] = array_merge($baseArgs, $configuredCookieArgs);
     }
-    foreach (getAutomaticBrowserCookieArgSets() as $cookieArgSet) {
-        $attempts[] = array_merge($baseArgs, $cookieArgSet);
+    
+    // Only try browser cookies if we can detect at least one working browser
+    // AND we're not on a server where browser cookies will fail
+    // (detect by checking if we can access browser data)
+    if (canAccessBrowserCookies()) {
+        foreach (getAutomaticBrowserCookieArgSets() as $cookieArgSet) {
+            $attempts[] = array_merge($baseArgs, $cookieArgSet);
+        }
     }
 }
 
