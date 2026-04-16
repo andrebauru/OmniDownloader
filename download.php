@@ -67,14 +67,85 @@ function getConfiguredCookieArgs(): array
     return [];
 }
 
+function detectInstalledBrowsers(): array
+{
+    /**
+     * Detecta quais navegadores estão instalados no sistema
+     * de forma robusta, tentando vários caminhos conhecidos.
+     */
+    $browsers = [];
+    $paths = [
+        'chrome' => [
+            'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+            'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+        ],
+        'edge' => [
+            'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+            'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+        ],
+        'firefox' => [
+            'C:\\Program Files\\Mozilla Firefox\\firefox.exe',
+            'C:\\Program Files (x86)\\Mozilla Firefox\\firefox.exe',
+        ],
+        'brave' => [
+            'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe',
+            'C:\\Program Files (x86)\\BraveSoftware\\Brave-Browser\\Application\\brave.exe',
+        ],
+    ];
+
+    // Se não é Windows, tentar com comandos do sistema
+    if (PHP_OS_FAMILY !== 'Windows') {
+        $browserNames = ['chrome', 'firefox', 'edge', 'brave'];
+        foreach ($browserNames as $name) {
+            exec("which $name 2>/dev/null", $output, $returnCode);
+            if ($returnCode === 0) {
+                $browsers[] = $name;
+            }
+        }
+        return $browsers;
+    }
+
+    // No Windows, verificar caminhos conhecidos
+    foreach ($paths as $browserName => $possiblePaths) {
+        foreach ($possiblePaths as $path) {
+            if (file_exists($path)) {
+                $browsers[] = $browserName;
+                break;
+            }
+        }
+    }
+
+    return $browsers;
+}
+
 function getAutomaticBrowserCookieArgSets(): array
 {
-    return [
-        ['--cookies-from-browser', 'chrome'],
-        ['--cookies-from-browser', 'edge'],
-        ['--cookies-from-browser', 'firefox'],
-        ['--cookies-from-browser', 'brave'],
-    ];
+    $installedBrowsers = detectInstalledBrowsers();
+    
+    if (empty($installedBrowsers)) {
+        // Fallback: tentar os navegadores mais comuns mesmo se não detectados
+        return [
+            ['--cookies-from-browser', 'chrome'],
+            ['--cookies-from-browser', 'edge'],
+            ['--cookies-from-browser', 'firefox'],
+            ['--cookies-from-browser', 'brave'],
+        ];
+    }
+
+    // Priorizar navegadores mais comuns (nesta ordem)
+    $priority = ['chrome', 'edge', 'firefox', 'brave'];
+    $orderedBrowsers = [];
+    
+    foreach ($priority as $browser) {
+        if (in_array($browser, $installedBrowsers, true)) {
+            $orderedBrowsers[] = $browser;
+        }
+    }
+
+    return array_map(
+        fn($browser) => ['--cookies-from-browser', $browser],
+        $orderedBrowsers
+    );
 }
 
 function isAntiBotOutput(array $outputLines): bool
@@ -231,9 +302,14 @@ if ($returnCode !== 0) {
     $normalizedDetail = str_replace(["’", "\u{2019}"], "'", mb_strtolower($detail));
 
     if (str_contains($normalizedDetail, "sign in to confirm you're not a bot")) {
+        $detectedBrowsers = detectInstalledBrowsers();
+        $browserList = !empty($detectedBrowsers) 
+            ? implode(', ', array_map('ucfirst', $detectedBrowsers))
+            : 'Chrome/Edge/Firefox/Brave';
+        
         sendError(
             "O YouTube está exigindo verificação anti-bot para este vídeo.\n"
-            . "O servidor já tentou ativar cookies automaticamente (Chrome/Edge/Firefox/Brave), mas não conseguiu autenticar.\n\n"
+            . "O servidor já tentou ativar cookies automaticamente ({$browserList}), mas não conseguiu autenticar.\n\n"
             . "Detalhe técnico: {$detail}",
             429
         );
