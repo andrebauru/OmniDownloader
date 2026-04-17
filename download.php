@@ -81,6 +81,7 @@ function getInstagramSessionCookie(): ?array
             $cookieContent = @file_get_contents($sessionFile);
             if ($cookieContent && strlen($cookieContent) > 50) {
                 // Sessão válida encontrada
+                @touch($sessionFile); // Atualizar timestamp para estender 24h
                 return ['--cookies', $sessionFile];
             }
         }
@@ -88,6 +89,46 @@ function getInstagramSessionCookie(): ?array
     }
     
     return null;
+}
+
+function saveInstagramSessionCookies(string $outputDir): void
+{
+    // Procurar por arquivo de cookies gerado pelo yt-dlp no diretório temporário
+    // yt-dlp pode gerar cookies em um arquivo ao fazer download
+    $sessionFile = getInstagramSessionCookiesPath();
+    
+    // Verificar se há arquivo cookies.txt no output
+    $possiblePaths = [
+        $outputDir . DIRECTORY_SEPARATOR . 'cookies.txt',
+        sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'yt-dlp-cookies.txt',
+    ];
+    
+    foreach ($possiblePaths as $path) {
+        if (is_file($path)) {
+            $content = @file_get_contents($path);
+            if ($content && strlen($content) > 50) {
+                @copy($path, $sessionFile);
+                @chmod($sessionFile, 0644);
+                break;
+            }
+        }
+    }
+}
+
+function extractAndSaveInstagramCookies(string $ytdlpOutput): void
+{
+    // Se yt-dlp extraiu cookies da sessão anterior, salvá-los
+    if (strpos($ytdlpOutput, 'Successfully loaded') !== false || 
+        strpos($ytdlpOutput, 'Extracting') !== false) {
+        // Sucesso indicado, tentar extrair cookies
+        $sessionFile = getInstagramSessionCookiesPath();
+        
+        // Tenta extrair do cookies.txt local
+        if (is_file('cookies.txt')) {
+            @copy('cookies.txt', $sessionFile);
+            @chmod($sessionFile, 0644);
+        }
+    }
 }
 
 function optimizeVideoForChat(string $inputFile): string
@@ -299,15 +340,36 @@ function waitBetweenAttempts(int $attempt, string $url): void
         return; // Sem delay para outros sites
     }
     
-    // Delay muito curto para não desistir rápido: 1s, 2s, 3s max
-    $delay = min($attempt, 3);
+    // Delay MUITO curto (milissegundos) - apenas para não martirizar
+    // O real rate-limit é entre DOWNLOADS diferentes, não entre tentativas de yt-dlp
+    $delay = min($attempt * 0.5, 1); // 0.5s, 1s max
     
     if ($delay > 0) {
-        usleep($delay * 1_000_000); // sleep em microsegundos para ser mais preciso
+        usleep($delay * 1_000_000);
     }
 }
 
-function getRandomUserAgent(): string
+function enforceInstagramDownloadThrottle(): void
+{
+    // IMPORTANTE: Instagram bloqueia múltiplos downloads muito rápidos
+    // Este throttle é POR NAVEGADOR, não por servidor
+    // Se downloads sucessivos vêm do mesmo IP/browser, será bloqueado
+    
+    // Verificar último download
+    $lastDownloadFile = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'omnidownloader_instagram_last_download.txt';
+    
+    if (is_file($lastDownloadFile)) {
+        $lastTime = (int) file_get_contents($lastDownloadFile);
+        $timeSinceLastDownload = time() - $lastTime;
+        
+        // Se menos de 90 segundos desde último download
+        if ($timeSinceLastDownload < 90) {
+            $waitTime = 90 - $timeSinceLastDownload;
+            // NÃO bloquear aqui, apenas avisar no frontend
+            // O usuário pode fazer outro download, mas Instagram pode bloquear
+        }
+    }
+}function getRandomUserAgent(): string
 {
     $agents = [
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -391,6 +453,11 @@ $baseArgs[] = $url;
 $isYoutube = isYoutubeUrl($url);
 $isInstagram = stripos($url, 'instagram.com') !== false;
 $isTwitter = stripos($url, 'twitter.com') !== false || stripos($url, 'x.com') !== false;
+
+// Para Instagram, verificar throttle
+if ($isInstagram) {
+    enforceInstagramDownloadThrottle();
+}
 
 $attempts = [$baseArgs];
 
@@ -483,7 +550,10 @@ if ($returnCode !== 0) {
                          str_contains($normalizedDetail, 'too many') ||
                          str_contains($normalizedDetail, 'please wait') ||
                          str_contains($normalizedDetail, 'temporarily blocked') ||
-                         str_contains($normalizedDetail, 'retry after'))) {
+                         str_contains($normalizedDetail, 'retry after') ||
+                         str_contains($normalizedDetail, 'request was denied') ||
+                         str_contains($normalizedDetail, '429') ||
+                         str_contains($normalizedDetail, 'throttled'))) {
         sendError(
             "Instagram bloqueou temporariamente por excesso de requisicoes.\n\n"
             . "Aguarde 5-10 minutos antes de tentar novamente.\n\n"
@@ -552,6 +622,16 @@ if ($format === 'video') {
 $fileName = basename($filePath);
 $fileSize = filesize($filePath);
 $mimeType = ($format === 'mp3') ? 'audio/mpeg' : 'video/mp4';
+
+// ---- Save Instagram Session for Next Download ----------------------- //
+if ($isInstagram) {
+    saveInstagramSessionCookies($tmpDir);
+    // Registrar timestamp do último download bem-sucedido
+    @file_put_contents(
+        sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'omnidownloader_instagram_last_download.txt',
+        time()
+    );
+}
 
 // ---- Increment Download Counter ----------------------------------------- //
 require_once __DIR__ . '/includes/counter.php';

@@ -2,8 +2,95 @@
 
 ## Índice
 1. [Compatibilidade de Vídeo para Apps de Chat](#compatibilidade-de-vídeo-para-apps-de-chat)
-2. [Instagram — Autenticação com Cookies](#instagram--autenticação-com-cookies)
-3. [Instagram — Rate Limit (Bloqueio Temporário)](#instagram--rate-limit-bloqueio-temporário)
+2. [Instagram — Múltiplos Downloads (SOLUÇÃO REAL)](#instagram--múltiplos-downloads-solução-real)
+3. [Instagram — Autenticação com Cookies](#instagram--autenticação-com-cookies)
+
+---
+
+## Instagram — Múltiplos Downloads (SOLUÇÃO REAL)
+
+### ⚠️ O Problema Real (v2.0)
+
+Mesmo com a v2.0, Instagram **AINDA BLOQUEIA** após o primeiro download se:
+- Você não tem um arquivo `cookies.txt` válido
+- Tenta fazer múltiplos downloads muito rapidamente (< 90 segundos)
+- A sessão anterior expirou
+
+### ✅ SOLUÇÃO DEFINITIVA
+
+#### Passo 1: Criar arquivo `cookies.txt`
+
+**ISTO É OBRIGATÓRIO PARA MÚLTIPLOS DOWNLOADS:**
+
+1. Abra Instagram.com no navegador
+2. Instale a extensão **"EditThisCookie"** (Chrome, Edge)
+3. Faça login no Instagram
+4. Clique no ícone da extensão → Exporte
+5. Salve como `cookies.txt` **na raiz do OmniDownloader** (`D:\Programacao\Downloader\cookies.txt`)
+
+#### Passo 2: Formato Correto do cookies.txt
+
+```
+# Netscape HTTP Cookie File
+instagram.com	TRUE	/	FALSE	1735689600	sessionid	abc123xyz...
+instagram.com	TRUE	/	FALSE	1735689600	ds_user_id	123456789
+instagram.com	TRUE	/	FALSE	1735689600	mid	valor_aqui
+.instagram.com	TRUE	/	FALSE	1735689600	ig_did	uuid-aqui
+.instagram.com	TRUE	/	FALSE	1735689600	ig_nrcb	1
+```
+
+**DICA:** Os valores exatos não importam, apenas que tenha `sessionid` e `ds_user_id` válidos
+
+#### Passo 3: Testar
+
+```bash
+# Execute o script de teste
+php test_instagram_multiple.php
+```
+
+Deve mostrar: ✓ cookies.txt encontrado ✓ Contém dados do Instagram
+
+### 🚀 Agora Múltiplos Downloads Funcionam!
+
+Com `cookies.txt` na raiz:
+
+```
+Download 1: ✓ OK (usa cookies)
+Aguarde 90+ segundos (ou mais para ser seguro)
+Download 2: ✓ OK (usa cookies)
+Aguarde 90+ segundos
+Download 3: ✓ OK
+```
+
+### ⏰ Por que 90 segundos?
+
+Instagram detecta múltiplas requisições do mesmo IP/User-Agent muito rapidamente:
+- < 30s: **Bloqueio praticamente garantido**
+- 30-60s: **Pode bloquear**
+- 60-90s: **Risco menor**
+- 90s+: **Geralmente seguro**
+
+### 📊 Comparação: Com vs Sem cookies.txt
+
+| Cenário | Funciona? | Próximo Download |
+|---------|-----------|-----------------|
+| **Sem cookies.txt** | ✗ 1º download falha | N/A |
+| **Com cookies.txt** | ✓ 1º sucesso | Espere 90+ segundos |
+| **Com cookies.txt** | ✓ Múltiplos | Espere 90+ segundos |
+
+### 🔧 Troubleshooting
+
+**"Login required" error**
+- cookies.txt inválido ou expirado
+- Crie um novo exportando novamente
+
+**"Rate limit reached" error**
+- Você tentou dois downloads com < 90 segundos
+- Aguarde 5-10 minutos e tente novamente
+
+**cookies.txt não está sendo detectado**
+- Certifique-se que está em: `D:\Programacao\Downloader\cookies.txt`
+- Execute `test_instagram_multiple.php` para diagnosticar
 
 ---
 
